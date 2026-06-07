@@ -1,18 +1,11 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { requirePiTuiModule } from "./qna";
+import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 import type { PlanModeState } from "./types";
 
 import { resolveActivePlanFilePath } from "./plan-files";
 import { createInactivePlanModeState, isPlanModeState } from "./utils";
-
-function getPiTui() {
-	return requirePiTuiModule() as {
-		truncateToWidth: (text: string, width: number) => string;
-		wrapTextWithAnsi: (text: string, width: number) => string[];
-	};
-}
 
 export const STATE_ENTRY_TYPE = "pi-plan:state";
 export const CONTEXT_ENTRY_TYPE = "pi-plan:context";
@@ -104,7 +97,6 @@ export function createPlanModeStateManager(pi: ExtensionAPI) {
 			(_tui, theme) => ({
 				invalidate: () => {},
 				render: (width: number) => {
-					const { truncateToWidth, wrapTextWithAnsi } = getPiTui();
 					const safeWidth = Math.max(1, width);
 					const activePlanFilePath = resolveActivePlanFilePath(ctx, state.planFilePath);
 					const lines = [

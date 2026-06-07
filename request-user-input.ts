@@ -2,7 +2,8 @@ import type { QnAResponse, QnAResult } from "./qna";
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { QnATuiComponent, requirePiTuiModule } from "./qna";
+import { Text } from "@earendil-works/pi-tui";
+import { QnATuiComponent } from "./qna";
 
 import type {
 	NormalizedRequestUserInputQuestion,
@@ -16,9 +17,6 @@ import type {
 import { findDuplicateId } from "./utils";
 
 function createText(text: string) {
-	const { Text } = requirePiTuiModule() as {
-		Text: new (text: string, x: number, y: number) => unknown;
-	};
 	return new Text(text, 0, 0);
 }
 

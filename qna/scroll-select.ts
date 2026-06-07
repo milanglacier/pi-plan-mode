@@ -1,41 +1,4 @@
-import { requirePiTuiModule } from "./pi-tui-loader.js";
-
-let cachedPiTui:
-	| {
-			Key: {
-				enter: string;
-				escape: string;
-				up: string;
-				down: string;
-				ctrl: (key: string) => string;
-			};
-			matchesKey: (input: string, key: string) => boolean;
-			truncateToWidth: (text: string, width: number) => string;
-			visibleWidth: (text: string) => number;
-			wrapTextWithAnsi: (text: string, width: number) => string[];
-	  }
-	| undefined;
-
-function getPiTui() {
-	if (cachedPiTui) {
-		return cachedPiTui;
-	}
-
-	cachedPiTui = requirePiTuiModule() as {
-		Key: {
-			enter: string;
-			escape: string;
-			up: string;
-			down: string;
-			ctrl: (key: string) => string;
-		};
-		matchesKey: (input: string, key: string) => boolean;
-		truncateToWidth: (text: string, width: number) => string;
-		visibleWidth: (text: string) => number;
-		wrapTextWithAnsi: (text: string, width: number) => string[];
-	};
-	return cachedPiTui;
-}
+import { Key, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 export interface ScrollSelectOption<T> {
 	value: T;
@@ -132,7 +95,6 @@ class ScrollSelectComponent<T> {
 	}
 
 	render(width: number): string[] {
-		const { truncateToWidth, visibleWidth, wrapTextWithAnsi } = getPiTui();
 		const safeWidth = Math.max(20, width);
 		const contentWidth = Math.max(12, safeWidth - 2);
 		const lines: string[] = [];
@@ -193,8 +155,6 @@ class ScrollSelectComponent<T> {
 	}
 
 	handleInput(data: string): void {
-		const { Key, matchesKey } = getPiTui();
-
 		if (matchesKey(data, Key.escape) || data === "q") {
 			this.done(null);
 			return;
@@ -225,7 +185,6 @@ class ScrollSelectComponent<T> {
 	dispose(): void {}
 
 	private renderSurfaceLine(line: string, contentWidth: number, options: { selected?: boolean } = {}): string {
-		const { visibleWidth } = getPiTui();
 		const paddedLine = `${line}${" ".repeat(Math.max(0, contentWidth - visibleWidth(line)))}`;
 		const boxedLine = ` ${paddedLine} `;
 		if (typeof this.theme.bg !== "function") {

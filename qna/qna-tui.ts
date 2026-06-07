@@ -1,4 +1,4 @@
-import { requirePiTuiModule } from "./pi-tui-loader.js";
+import { Editor, Key, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 type Component = {
 	handleInput: (data: string) => void;
@@ -17,35 +17,6 @@ type EditorTheme = {
 		itemSecondary?: (text: string) => string;
 	};
 };
-
-function getPiTui() {
-	return requirePiTuiModule() as {
-		Editor: new (
-			tui: TUI,
-			theme: EditorTheme,
-		) => {
-			disableSubmit?: boolean;
-			onChange?: () => void;
-			setText: (text: string) => void;
-			getText: () => string;
-			render: (width: number) => string[];
-			handleInput: (data: string) => void;
-		};
-		Key: {
-			enter: string;
-			tab: string;
-			escape: string;
-			up: string;
-			down: string;
-			ctrl: (key: string) => string;
-			shift: (key: string) => string;
-		};
-		matchesKey: (input: string, key: string) => boolean;
-		truncateToWidth: (text: string, width: number) => string;
-		visibleWidth: (text: string) => number;
-		wrapTextWithAnsi: (text: string, width: number) => string[];
-	};
-}
 
 export interface QnAOption {
 	label: string;
@@ -341,8 +312,18 @@ export class QnATuiComponent<TQuestion extends QnAQuestion> implements Component
 			},
 		};
 
-		const { Editor } = getPiTui();
-		this.editor = new Editor(tui, editorTheme);
+		const TuiEditor = Editor as unknown as new (
+			tui: TUI,
+			theme: EditorTheme,
+		) => {
+			disableSubmit?: boolean;
+			onChange?: () => void;
+			setText: (text: string) => void;
+			getText: () => string;
+			render: (width: number) => string[];
+			handleInput: (data: string) => void;
+		};
+		this.editor = new TuiEditor(tui, editorTheme);
 		this.editor.disableSubmit = true;
 		this.editor.onChange = () => {
 			this.saveCurrentResponse();
@@ -510,8 +491,6 @@ export class QnATuiComponent<TQuestion extends QnAQuestion> implements Component
 	}
 
 	handleInput(data: string): void {
-		const { Key, matchesKey } = getPiTui();
-
 		if (this.showingConfirmation) {
 			if (matchesKey(data, Key.enter)) {
 				this.submit();
@@ -640,8 +619,6 @@ export class QnATuiComponent<TQuestion extends QnAQuestion> implements Component
 	}
 
 	render(width: number): string[] {
-		const { truncateToWidth, visibleWidth, wrapTextWithAnsi } = getPiTui();
-
 		if (this.cachedLines && this.cachedWidth === width) {
 			return this.cachedLines;
 		}
