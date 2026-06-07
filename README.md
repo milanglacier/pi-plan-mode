@@ -1,4 +1,4 @@
-# `@ifi/pi-plan`
+# `@milanglacier/pi-plan-mode`
 
 > Structured planning mode for pi — think before you code.
 
@@ -57,10 +57,8 @@ Plan saved to: /home/user/projects/app/session-abc.plan.md
 ## Installation
 
 ```bash
-pi install npm:@ifi/pi-plan
+pi install npm:@milanglacier/pi-plan-mode
 ```
-
-> Installed by default with `npx @ifi/oh-pi`.
 
 ## Commands
 

@@ -1,5 +1,5 @@
 {
-	"name": "@ifi/pi-plan",
+	"name": "@milanglacier/pi-plan-mode",
 	"version": "0.5.1",
 	"description": "Planning mode extension for pi with persistent plan files and branch-aware planning.",
 	"keywords": [
@@ -11,15 +11,14 @@
 		"planning",
 		"research"
 	],
-	"homepage": "https://github.com/ifiokjr/oh-pi/tree/main/packages/plan",
+	"homepage": "https://github.com/milanglacier/pi-plan-mode",
 	"bugs": {
-		"url": "https://github.com/ifiokjr/oh-pi/issues"
+		"url": "https://github.com/milanglacier/pi-plan-mode/issues"
 	},
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/ifiokjr/oh-pi.git",
-		"directory": "packages/plan"
+		"url": "git+https://github.com/milanglacier/pi-plan-mode.git"
 	},
 	"bin": {
 		"pi-plan": "install.mjs"

@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 
-const PACKAGE_NAME = "@ifi/pi-plan";
+const PACKAGE_NAME = "@milanglacier/pi-plan-mode";
 
 function parseArgs(argv) {
 	const args = argv.slice(2);
@@ -29,12 +29,12 @@ function parseArgs(argv) {
 function printHelp() {
 	console.log(
 		`
-pi-plan — install the @ifi planning extension into pi
+pi-plan — install the pi-plan-mode extension into pi
 
 Usage:
-  npx @ifi/pi-plan            Install globally
-  npx @ifi/pi-plan --local    Install into project .pi/settings.json
-  npx @ifi/pi-plan --remove   Remove from pi
+  npx @milanglacier/pi-plan-mode            Install globally
+  npx @milanglacier/pi-plan-mode --local    Install into project .pi/settings.json
+  npx @milanglacier/pi-plan-mode --remove   Remove from pi
 
 Options:
   -l, --local    Install project-locally instead of globally
@@ -95,13 +95,13 @@ if (!result.ok) {
 if (opts.remove) {
 	console.log(
 		result.status === "already-removed"
-			? "\n✅ @ifi/pi-plan is already absent from pi."
-			: "\n✅ Removed @ifi/pi-plan from pi.",
+			? "\n✅ @milanglacier/pi-plan-mode is already absent from pi."
+			: "\n✅ Removed @milanglacier/pi-plan-mode from pi.",
 	);
 } else {
 	console.log(
 		result.status === "already-installed"
-			? "\n✅ @ifi/pi-plan is already installed in pi."
-			: "\n✅ Installed @ifi/pi-plan into pi. Restart pi to load it.",
+			? "\n✅ @milanglacier/pi-plan-mode is already installed in pi."
+			: "\n✅ Installed @milanglacier/pi-plan-mode into pi. Restart pi to load it.",
 	);
 }
