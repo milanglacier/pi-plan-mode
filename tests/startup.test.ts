@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createExtensionHarness } from "../../../test-utils/extension-runtime-harness.js";
+import { createExtensionHarness } from "../test-utils/extension-runtime-harness.js";
 import planExtension from "../index.js";
 
 describe("plan extension startup refresh", () => {
