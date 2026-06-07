@@ -1,6 +1,6 @@
 {
 	"name": "@milanglacier/pi-plan-mode",
-	"version": "0.5.4",
+	"version": "0.5.5",
 	"description": "Planning mode extension for pi with persistent plan files and branch-aware planning.",
 	"keywords": [
 		"branch-planning",
