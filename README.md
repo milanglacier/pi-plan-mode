@@ -43,7 +43,7 @@ While active, a banner stays visible:
 
 ```
 ┌ PLAN MODE ─ /home/user/projects/app/session-abc.plan.md ─────┐
-│ [plan-mode tools are active: task_agents, request_user_input] │
+│ [plan-mode tools are active: request_user_input, set_plan]     │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -80,21 +80,10 @@ Only while plan mode is active, these tools are exposed:
 
 | Tool                 | Purpose                                                |
 | -------------------- | ------------------------------------------------------ |
-| `task_agents`        | Run parallel research tasks (1-4 concurrent subagents) |
-| `steer_task_agent`   | Rerun a specific research task with extra guidance     |
 | `request_user_input` | Ask you clarifying questions with optional choices     |
 | `set_plan`           | Overwrite the plan file with the latest full plan text |
 
 When plan mode ends, these tools disappear.
-
-## Plan mode vs. subagent planner
-
-|                 | Plan mode (`/plan`)                 | Subagent planner                         |
-| --------------- | ----------------------------------- | ---------------------------------------- |
-| **Scope**       | Interactive session state           | Isolated subagent run                    |
-| **Persistence** | Plan file on disk                   | Passed as text between steps             |
-| **Tools**       | `task_agents`, `request_user_input` | Full agent tool access                   |
-| **Best for**    | Architecting features interactively | Delegate a planning pass to a specialist |
 
 ## Customization
 

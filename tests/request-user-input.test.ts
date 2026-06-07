@@ -1,4 +1,4 @@
-import type { QnAResponse } from "@ifi/pi-shared-qna";
+import type { QnAResponse } from "../qna";
 
 import { describe, expect, test } from "vitest";
 

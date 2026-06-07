@@ -1,6 +1,6 @@
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { requirePiTuiModule } from "@ifi/pi-shared-qna";
+import { requirePiTuiModule } from "./qna";
 
 import type { PlanModeState } from "./types";
 
@@ -17,7 +17,7 @@ function getPiTui() {
 export const STATE_ENTRY_TYPE = "pi-plan:state";
 export const CONTEXT_ENTRY_TYPE = "pi-plan:context";
 const BANNER_WIDGET_KEY = "pi-plan-banner";
-const PLAN_MODE_TOOL_NAMES = ["task_agents", "steer_task_agent", "request_user_input", "set_plan"] as const;
+const PLAN_MODE_TOOL_NAMES = ["request_user_input", "set_plan"] as const;
 const PLAN_MODE_TOOL_NAME_SET = new Set<string>(PLAN_MODE_TOOL_NAMES);
 
 export function getLatestState(ctx: ExtensionContext): PlanModeState {

@@ -45,16 +45,6 @@ export function resolvePlanFilePath(cwd: string, filePath: string): string | nul
 	return path.resolve(cwd, trimmed);
 }
 
-export function resolveTaskAgentConcurrency(concurrency: number | undefined = 2): number | null {
-	if (!Number.isFinite(concurrency) || !Number.isInteger(concurrency)) {
-		return null;
-	}
-	if (concurrency < 1 || concurrency > 4) {
-		return null;
-	}
-	return concurrency;
-}
-
 export function findDuplicateId(ids: string[]): string | null {
 	const seen = new Set<string>();
 	for (const id of ids) {

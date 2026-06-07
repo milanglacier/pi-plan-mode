@@ -1,8 +1,8 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { AgentToolResult } from "@earendil-works/pi-agent-core";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-import { keyHint } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
+import { keyHint } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -10,9 +10,8 @@ import { registerPlanModeCommand } from "./flow";
 import { resolveActivePlanFilePath } from "./plan-files";
 import { loadPlanModePrompt } from "./prompts";
 import { registerRequestUserInputTool } from "./request-user-input";
-import { RequestUserInputSchema, SetPlanSchema, SteerTaskAgentSchema, TaskAgentsSchema } from "./schemas";
+import { RequestUserInputSchema, SetPlanSchema } from "./schemas";
 import { CONTEXT_ENTRY_TYPE, createPlanModeStateManager } from "./state";
-import { registerTaskAgentTools } from "./task-agents";
 
 function summarizeSnippet(text: string, maxLength: number = 120): string {
 	const singleLine = text.replaceAll(/\s+/g, " ").trim();
@@ -169,11 +168,6 @@ export default function (pi: ExtensionAPI) {
 		requestUserInputSchema: RequestUserInputSchema,
 	});
 
-	registerTaskAgentTools(pi, {
-		getState: stateManager.getState,
-		steerTaskAgentSchema: SteerTaskAgentSchema,
-		taskAgentsSchema: TaskAgentsSchema,
-	});
 
 	registerPlanModeCommand(pi, {
 		onPlanModeExited: ({ planFilePath, planText }) => {
