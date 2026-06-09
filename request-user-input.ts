@@ -1,9 +1,7 @@
-import type { QnAResponse, QnAResult } from "./qna";
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 import { Text } from "@earendil-works/pi-tui";
-import { QnATuiComponent } from "./qna";
 
 import type {
 	NormalizedRequestUserInputQuestion,
@@ -18,6 +16,13 @@ import { findDuplicateId } from "./utils";
 
 function createText(text: string) {
 	return new Text(text, 0, 0);
+}
+
+export interface RequestUserInputQuestionResponse {
+	selectedOptionIndex: number;
+	customText: string;
+	selectionTouched: boolean;
+	committed: boolean;
 }
 
 export function normalizeRequestUserInputQuestions(
@@ -47,7 +52,7 @@ export function normalizeRequestUserInputQuestions(
 
 export function buildRequestUserInputAnswer(
 	question: NormalizedRequestUserInputQuestion,
-	response: QnAResponse,
+	response: RequestUserInputQuestionResponse,
 ): RequestUserInputAnswer {
 	const hasOptions = question.options.length > 0;
 	const otherIndex = question.options.length;
@@ -79,7 +84,7 @@ export function buildRequestUserInputAnswer(
 
 export function buildRequestUserInputResponse(
 	questions: NormalizedRequestUserInputQuestion[],
-	responses: QnAResponse[],
+	responses: RequestUserInputQuestionResponse[],
 ): RequestUserInputResponse {
 	const answers: Record<string, RequestUserInputAnswer> = {};
 	for (let i = 0; i < questions.length; i++) {
@@ -125,29 +130,118 @@ export function buildRequestUserInputSummary(details: RequestUserInputDetails): 
 	return lines.join("\n");
 }
 
-async function collectRequestUserInputAnswers(
-	ctx: ExtensionContext,
-	questions: NormalizedRequestUserInputQuestion[],
-): Promise<RequestUserInputResponse | null> {
-	const result = await ctx.ui.custom<QnAResult | null>(
-		(tui, theme, _kb, done) =>
-			new QnATuiComponent(questions, tui, done, {
-				title: "Questions",
-				questionSummaryLabel: (question) => question.header?.trim() || question.question,
-				accentColor: (text) => theme.fg("accent", text),
-				successColor: (text) => theme.fg("success", text),
-				warningColor: (text) => theme.fg("warning", text),
-				mutedColor: (text) => theme.fg("muted", text),
-				dimColor: (text) => theme.fg("dim", text),
-				boldText: (text) => theme.bold(text),
-			}),
-	);
+export function buildRequestUserInputDialogTitle(question: NormalizedRequestUserInputQuestion): string {
+	const header = question.header?.trim();
+	const prompt = question.question.trim();
+	if (!header || header === prompt) {
+		return prompt || question.question;
+	}
+	return `${header}\n${prompt || question.question}`;
+}
 
-	if (!result) {
+function buildDialogOptions(signal: AbortSignal | undefined): { signal: AbortSignal } | undefined {
+	return signal ? { signal } : undefined;
+}
+
+async function requestInputDialog(
+	ctx: ExtensionContext,
+	title: string,
+	placeholder: string,
+	signal: AbortSignal | undefined,
+): Promise<string | undefined> {
+	const options = buildDialogOptions(signal);
+	if (options) {
+		return ctx.ui.input(title, placeholder, options);
+	}
+	return ctx.ui.input(title, placeholder);
+}
+
+async function requestSelectDialog(
+	ctx: ExtensionContext,
+	title: string,
+	labels: string[],
+	signal: AbortSignal | undefined,
+): Promise<string | undefined> {
+	const options = buildDialogOptions(signal);
+	if (options) {
+		return ctx.ui.select(title, labels, options);
+	}
+	return ctx.ui.select(title, labels);
+}
+
+export async function collectSingleRequestUserInputAnswer(
+	ctx: ExtensionContext,
+	question: NormalizedRequestUserInputQuestion,
+	signal?: AbortSignal,
+): Promise<RequestUserInputQuestionResponse | null> {
+	const title = buildRequestUserInputDialogTitle(question);
+
+	if (question.options.length === 0) {
+		const value = await requestInputDialog(ctx, title, question.question, signal);
+		if (value === undefined) {
+			return null;
+		}
+
+		return {
+			selectedOptionIndex: 0,
+			customText: value,
+			selectionTouched: value.trim().length > 0,
+			committed: true,
+		};
+	}
+
+	const labels = [
+		...question.options.map((option, index) => `${index + 1}. ${option.label}`),
+		`${question.options.length + 1}. Other`,
+	];
+	const selected = await requestSelectDialog(ctx, title, labels, signal);
+	if (selected === undefined) {
 		return null;
 	}
 
-	return buildRequestUserInputResponse(questions, result.responses);
+	const selectedOptionIndex = labels.indexOf(selected);
+	if (selectedOptionIndex < 0) {
+		return null;
+	}
+
+	if (selectedOptionIndex === question.options.length) {
+		const value = await requestInputDialog(ctx, `${title}\nOther answer`, "Type your answer", signal);
+		if (value === undefined) {
+			return null;
+		}
+
+		return {
+			selectedOptionIndex,
+			customText: value,
+			selectionTouched: value.trim().length > 0,
+			committed: true,
+		};
+	}
+
+	return {
+		selectedOptionIndex,
+		customText: "",
+		selectionTouched: true,
+		committed: true,
+	};
+}
+
+export async function collectRequestUserInputAnswers(
+	ctx: ExtensionContext,
+	questions: NormalizedRequestUserInputQuestion[],
+	signal?: AbortSignal,
+): Promise<RequestUserInputResponse | null> {
+	const responses: RequestUserInputQuestionResponse[] = [];
+
+	for (const question of questions) {
+		const response = await collectSingleRequestUserInputAnswer(ctx, question, signal);
+		if (!response) {
+			return null;
+		}
+		responses.push(response);
+	}
+
+	return buildRequestUserInputResponse(questions, responses);
 }
 
 export function registerRequestUserInputTool(
@@ -160,7 +254,7 @@ export function registerRequestUserInputTool(
 	pi.registerTool({
 		description:
 			"Request user input for one to three short questions and wait for the response. This tool is only available in Plan mode.",
-		async execute(_toolCallId, params, _signal, _onUpdate, ctx): Promise<AgentToolResult<RequestUserInputDetails>> {
+		async execute(_toolCallId, params, signal, _onUpdate, ctx): Promise<AgentToolResult<RequestUserInputDetails>> {
 			if (!dependencies.getState().active) {
 				return {
 					isError: true,
@@ -179,7 +273,7 @@ export function registerRequestUserInputTool(
 					content: [
 						{
 							type: "text",
-							text: "request_user_input requires interactive mode",
+							text: "request_user_input requires UI support",
 						},
 					],
 				};
@@ -193,7 +287,7 @@ export function registerRequestUserInputTool(
 				};
 			}
 
-			const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
+			const response = await collectRequestUserInputAnswers(ctx, normalized.questions, signal);
 			if (!response) {
 				return {
 					isError: true,

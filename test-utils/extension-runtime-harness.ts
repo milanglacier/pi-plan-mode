@@ -22,6 +22,7 @@ export function createExtensionHarness() {
 			confirm: vi.fn(async () => true),
 			custom: vi.fn(async () => ({ cancelled: false })),
 			getEditorText: vi.fn(() => ""),
+			input: vi.fn(() => undefined),
 			notify: vi.fn(),
 			select: vi.fn(() => undefined),
 			setEditorText: vi.fn(),
