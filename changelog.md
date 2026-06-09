@@ -1,4 +1,4 @@
-# v0.5.6 (unreleased)
+# v0.5.6
 
 ## Changed
 
@@ -10,3 +10,4 @@
 - **Enable strict TypeScript type checking.** The TypeScript configuration now
   enforces stricter type rules across the codebase, and all lint violations have
   been resolved.
+
