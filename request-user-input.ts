@@ -270,7 +270,10 @@ export function registerRequestUserInputTool(
 
 			const response = await collectRequestUserInputAnswers(ctx, normalized.questions, signal);
 			if (!response) {
-				throw new Error("request_user_input was cancelled before receiving a response");
+				if (signal?.aborted) {
+					throw new Error("request_user_input was aborted");
+				}
+				throw new Error("request_user_input was cancelled by the user");
 			}
 
 			const details: RequestUserInputDetails = {
