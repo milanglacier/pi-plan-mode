@@ -10,7 +10,7 @@ import { registerPlanModeCommand } from "./flow";
 import { resolveActivePlanFilePath } from "./plan-files";
 import { loadPlanModePrompt } from "./prompts";
 import { registerRequestUserInputTool } from "./request-user-input";
-import { RequestUserInputSchema, SetPlanSchema } from "./schemas";
+import { SetPlanSchema } from "./schemas";
 import { CONTEXT_ENTRY_TYPE, createPlanModeStateManager } from "./state";
 
 function summarizeSnippet(text: string, maxLength: number = 120): string {
@@ -56,7 +56,7 @@ export default function (pi: ExtensionAPI) {
 
 		lines.push(theme.fg("muted", `Plan file: ${details.planFilePath}`));
 		if (!expanded) {
-			lines.push(theme.fg("dim", keyHint("expandTools", "to expand")));
+			lines.push(theme.fg("dim", keyHint("app.tools.expand", "to expand")));
 			return render(lines.join("\n"));
 		}
 
@@ -76,41 +76,17 @@ export default function (pi: ExtensionAPI) {
 			ctx,
 		): Promise<AgentToolResult<SetPlanDetails>> {
 			if (!stateManager.getState().active) {
-				return {
-					isError: true,
-					content: [
-						{
-							type: "text",
-							text: "set_plan is only available while plan mode is active.",
-						},
-					],
-				};
+				throw new Error("set_plan is only available while plan mode is active.");
 			}
 
 			const planFilePath = resolveActivePlanFilePath(ctx, stateManager.getState().planFilePath);
 			if (!planFilePath) {
-				return {
-					isError: true,
-					content: [
-						{
-							type: "text",
-							text: "No active plan file. Restart plan mode and try again.",
-						},
-					],
-				};
+				throw new Error("No active plan file. Restart plan mode and try again.");
 			}
 
 			const plan = String(params.plan ?? "").trim();
 			if (!plan) {
-				return {
-					isError: true,
-					content: [
-						{
-							type: "text",
-							text: "set_plan requires non-empty plan text.",
-						},
-					],
-				};
+				throw new Error("set_plan requires non-empty plan text.");
 			}
 
 			await mkdir(path.dirname(planFilePath), { recursive: true });
@@ -153,7 +129,7 @@ export default function (pi: ExtensionAPI) {
 
 			if (!expanded) {
 				return new Text(
-					`${theme.fg("success", "Plan written.")}\n${theme.fg("dim", keyHint("expandTools", "to view plan"))}`,
+					`${theme.fg("success", "Plan written.")}\n${theme.fg("dim", keyHint("app.tools.expand", "to view plan"))}`,
 					0,
 					0,
 				);
@@ -165,9 +141,7 @@ export default function (pi: ExtensionAPI) {
 
 	registerRequestUserInputTool(pi, {
 		getState: stateManager.getState,
-		requestUserInputSchema: RequestUserInputSchema,
 	});
-
 
 	registerPlanModeCommand(pi, {
 		onPlanModeExited: ({ planFilePath, planText }) => {
@@ -222,15 +196,7 @@ export default function (pi: ExtensionAPI) {
 		startupRefreshTimer.unref?.();
 	});
 
-	pi.on("session_switch", async (_event, ctx) => {
-		refreshState(ctx);
-	});
-
 	pi.on("session_tree", async (_event, ctx) => {
-		refreshState(ctx);
-	});
-
-	pi.on("session_fork", async (_event, ctx) => {
 		refreshState(ctx);
 	});
 

@@ -31,20 +31,9 @@ describe("plan extension", () => {
 		planExtension(harness.pi as never);
 		const setPlan = harness.tools.get("set_plan");
 
-		const inactive = await setPlan.execute(
-			"tool-1",
-			{ plan: "# New plan" },
-			new AbortController().signal,
-			() => {},
-			harness.ctx,
-		);
-		expect(inactive.isError).toBe(true);
-		expect(inactive.content).toEqual([
-			{
-				type: "text",
-				text: "set_plan is only available while plan mode is active.",
-			},
-		]);
+		await expect(
+			setPlan.execute("tool-1", { plan: "# New plan" }, new AbortController().signal, () => {}, harness.ctx),
+		).rejects.toThrow("set_plan is only available while plan mode is active.");
 	});
 
 	it("rejects empty plans and writes the canonical plan file when active", async () => {
@@ -67,17 +56,12 @@ describe("plan extension", () => {
 		];
 
 		planExtension(harness.pi as never);
-		await harness.emitAsync("session_switch", { type: "session_switch" }, harness.ctx);
+		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
 		const setPlan = harness.tools.get("set_plan");
 
-		const empty = await setPlan.execute("tool-2", { plan: "   " }, new AbortController().signal, () => {}, harness.ctx);
-		expect(empty.isError).toBe(true);
-		expect(empty.content).toEqual([
-			{
-				type: "text",
-				text: "set_plan requires non-empty plan text.",
-			},
-		]);
+		await expect(
+			setPlan.execute("tool-2", { plan: "   " }, new AbortController().signal, () => {}, harness.ctx),
+		).rejects.toThrow("set_plan requires non-empty plan text.");
 
 		const result = await setPlan.execute(
 			"tool-3",
@@ -115,7 +99,7 @@ describe("plan extension", () => {
 		];
 
 		planExtension(harness.pi as never);
-		await harness.emitAsync("session_switch", { type: "session_switch" }, harness.ctx);
+		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
 		const [entry] = await harness.emitAsync("before_agent_start");
 
 		expect(entry).toEqual({

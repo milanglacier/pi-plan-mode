@@ -34,16 +34,19 @@
 	"type": "module",
 	"scripts": {
 		"test": "vitest run",
-		"check": "npm test"
+		"typecheck": "tsc --noEmit",
+		"check": "npm run typecheck && npm test"
 	},
 	"devDependencies": {
+		"@types/node": "^25.9.2",
+		"typescript": "^6.0.3",
 		"vitest": "^4.1.8"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-agent-core": ">=0.56.1",
-		"@earendil-works/pi-ai": ">=0.56.1",
-		"@earendil-works/pi-coding-agent": ">=0.56.1",
-		"@earendil-works/pi-tui": ">=0.56.1",
+		"@earendil-works/pi-agent-core": ">=0.78.1",
+		"@earendil-works/pi-ai": ">=0.78.1",
+		"@earendil-works/pi-coding-agent": ">=0.78.1",
+		"@earendil-works/pi-tui": ">=0.78.1",
 		"typebox": "*"
 	},
 	"pi": {

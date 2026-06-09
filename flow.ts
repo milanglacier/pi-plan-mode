@@ -40,7 +40,7 @@ interface PlanModeExitSummary {
 	planText?: string;
 }
 
-async function navigateToFreshPlanningBranch(ctx: ExtensionContext, cancelMessage: string): Promise<boolean> {
+async function navigateToFreshPlanningBranch(ctx: ExtensionCommandContext, cancelMessage: string): Promise<boolean> {
 	const firstUserMessageId = getFirstUserMessageId(ctx);
 	if (!firstUserMessageId) {
 		ctx.ui.notify("No user message found to branch planning from.", "error");
@@ -71,7 +71,7 @@ async function navigateToFreshPlanningBranch(ctx: ExtensionContext, cancelMessag
 }
 
 async function navigateToSavedPlanningBranch(
-	ctx: ExtensionContext,
+	ctx: ExtensionCommandContext,
 	options: {
 		savedLeafId?: string;
 		currentLeafId?: string;
@@ -197,7 +197,7 @@ async function updateActivePlanFileLocation(
 }
 
 async function exitPlanMode(
-	ctx: ExtensionContext,
+	ctx: ExtensionCommandContext,
 	stateManager: PlanModeStateManager,
 	wantsSummary: boolean,
 	onPlanModeExited?: (summary: PlanModeExitSummary) => void,
@@ -231,7 +231,7 @@ async function exitPlanMode(
 						summarize: true,
 					})
 					.then(done)
-					.catch((error) =>
+					.catch((error: unknown) =>
 						done({
 							cancelled: false,
 							error: error instanceof Error ? error.message : String(error),
@@ -293,7 +293,7 @@ async function exitPlanMode(
 }
 
 async function endPlanMode(
-	ctx: ExtensionContext,
+	ctx: ExtensionCommandContext,
 	stateManager: PlanModeStateManager,
 	onPlanModeExited?: (summary: PlanModeExitSummary) => void,
 ) {
@@ -426,9 +426,11 @@ async function navigateTreeInShortcutContext(
 }
 
 function createShortcutCommandContext(ctx: ExtensionContext): ExtensionCommandContext {
+	const commandCtx = ctx as ExtensionContext & Partial<Pick<ExtensionCommandContext, "getSystemPromptOptions">>;
 	return {
 		...ctx,
 		fork: async () => ({ cancelled: true }),
+		getSystemPromptOptions: () => commandCtx.getSystemPromptOptions?.() ?? { cwd: ctx.cwd },
 		navigateTree: async (targetId, options) => navigateTreeInShortcutContext(ctx, targetId, options),
 		newSession: async () => ({ cancelled: true }),
 		reload: async () => {},
@@ -487,7 +489,7 @@ export function registerPlanModeCommand(
 			}
 		}
 
-		const originLeafId = ctx.sessionManager.getLeafId();
+		const originLeafId = ctx.sessionManager.getLeafId() ?? undefined;
 		const canStartFromEmptyBranch = canOfferEmptyBranchStart(ctx, originLeafId);
 		const currentState = dependencies.stateManager.getState();
 		const sessionPlanFilePath = resolveActivePlanFilePath(ctx, currentState.planFilePath);

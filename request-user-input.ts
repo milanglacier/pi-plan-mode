@@ -12,6 +12,7 @@ import type {
 	RequestUserInputResponse,
 } from "./types";
 
+import { RequestUserInputSchema } from "./schemas";
 import { findDuplicateId } from "./utils";
 
 function createText(text: string) {
@@ -248,7 +249,6 @@ export function registerRequestUserInputTool(
 	pi: ExtensionAPI,
 	dependencies: {
 		getState: () => PlanModeState;
-		requestUserInputSchema: unknown;
 	},
 ) {
 	pi.registerTool({
@@ -256,48 +256,21 @@ export function registerRequestUserInputTool(
 			"Request user input for one to three short questions and wait for the response. This tool is only available in Plan mode.",
 		async execute(_toolCallId, params, signal, _onUpdate, ctx): Promise<AgentToolResult<RequestUserInputDetails>> {
 			if (!dependencies.getState().active) {
-				return {
-					isError: true,
-					content: [
-						{
-							type: "text",
-							text: "request_user_input is unavailable when plan mode is inactive",
-						},
-					],
-				};
+				throw new Error("request_user_input is unavailable when plan mode is inactive");
 			}
 
 			if (!ctx.hasUI) {
-				return {
-					isError: true,
-					content: [
-						{
-							type: "text",
-							text: "request_user_input requires UI support",
-						},
-					],
-				};
+				throw new Error("request_user_input requires UI support");
 			}
 
-			const normalized = normalizeRequestUserInputQuestions(params.questions as RequestUserInputQuestion[]);
+			const normalized = normalizeRequestUserInputQuestions(params.questions);
 			if ("error" in normalized) {
-				return {
-					isError: true,
-					content: [{ type: "text", text: normalized.error }],
-				};
+				throw new Error(normalized.error);
 			}
 
 			const response = await collectRequestUserInputAnswers(ctx, normalized.questions, signal);
 			if (!response) {
-				return {
-					isError: true,
-					content: [
-						{
-							type: "text",
-							text: "request_user_input was cancelled before receiving a response",
-						},
-					],
-				};
+				throw new Error("request_user_input was cancelled before receiving a response");
 			}
 
 			const details: RequestUserInputDetails = {
@@ -316,7 +289,7 @@ export function registerRequestUserInputTool(
 		},
 		label: "request_user_input",
 		name: "request_user_input",
-		parameters: dependencies.requestUserInputSchema,
+		parameters: RequestUserInputSchema,
 		renderCall(args, theme) {
 			const questions = ((args.questions as RequestUserInputQuestion[] | undefined) ?? []).length;
 			const label = `${questions} question${questions === 1 ? "" : "s"}`;
