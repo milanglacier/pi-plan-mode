@@ -10,8 +10,17 @@ originally created by [Ifiok Jr.](https://github.com/ifiokjr). The initial
 source was imported from
 [`ifiokjr/oh-pi@7ef2e7b`](https://github.com/ifiokjr/oh-pi/commit/7ef2e7b073198665fc2492498a085fa3e1eeaced).
 
-The original project remains the canonical upstream. Its copyright and MIT
-license terms continue to apply.
+## Differences from upstream
+
+- **No planner subagent:** Plan mode is a direct extension of the main
+  conversation — it injects a planning prompt and exposes tools on the main
+  agent. There is no separate planner agent. If you want orchestrated subagents
+  with a dedicated planner, consider
+  [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) instead.
+- **Built-in dialogs for `request_user_input`:** The custom TUI wizard was
+  replaced with pi's native `ctx.ui` dialogs (`select` and `input`). This means
+  the tool works with any pi UI that supports the built-in dialog API — including
+  RPC-connected clients — without requiring custom UI adoption.
 
 ## Why use this?
 
