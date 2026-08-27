@@ -14,6 +14,16 @@ async function createTempDir(): Promise<string> {
 	return tempDir;
 }
 
+async function createConfigEnvironment() {
+	const tempDir = await createTempDir();
+	const agentDirPath = path.join(tempDir, "agent");
+	const projectDirPath = path.join(tempDir, "project");
+	await mkdir(agentDirPath, { recursive: true });
+	await mkdir(path.join(projectDirPath, ".pi"), { recursive: true });
+	vi.stubEnv("PI_CODING_AGENT_DIR", agentDirPath);
+	return { agentDirPath, projectDirPath };
+}
+
 afterEach(async () => {
 	while (tempDirs.length > 0) {
 		const tempDir = tempDirs.pop();
@@ -23,11 +33,14 @@ afterEach(async () => {
 		await rm(tempDir, { recursive: true, force: true });
 	}
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 });
 
 describe("plan extension", () => {
 	it("keeps alt+p as the default plan mode shortcut", async () => {
+		const paths = await createConfigEnvironment();
 		const harness = createExtensionHarness();
+		harness.ctx.cwd = paths.projectDirPath;
 		planExtension(harness.pi as never);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
@@ -38,16 +51,15 @@ describe("plan extension", () => {
 	});
 
 	it("registers project-local plan mode keybindings on session start", async () => {
-		const tempDir = await createTempDir();
-		await mkdir(path.join(tempDir, ".pi"), { recursive: true });
+		const paths = await createConfigEnvironment();
 		await writeFile(
-			path.join(tempDir, ".pi", "pi-plan-mode.jsonc"),
+			path.join(paths.projectDirPath, ".pi", "pi-plan-mode.jsonc"),
 			'{ "keybinding": { "toggle_plan_mode": ["ctrl+alt+p", "shift+f2"] } }',
 			"utf8",
 		);
 
 		const harness = createExtensionHarness();
-		harness.ctx.cwd = tempDir;
+		harness.ctx.cwd = paths.projectDirPath;
 		planExtension(harness.pi as never);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
@@ -57,17 +69,41 @@ describe("plan extension", () => {
 		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
 	});
 
-	it("does not register a plan mode shortcut when configured with an empty list", async () => {
-		const tempDir = await createTempDir();
-		await mkdir(path.join(tempDir, ".pi"), { recursive: true });
+	it("ignores project-local plan mode keybindings for untrusted projects", async () => {
+		const paths = await createConfigEnvironment();
 		await writeFile(
-			path.join(tempDir, ".pi", "pi-plan-mode.jsonc"),
+			path.join(paths.agentDirPath, "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": ["ctrl+alt+p"] } }',
+			"utf8",
+		);
+		await writeFile(
+			path.join(paths.projectDirPath, ".pi", "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": ["p"] } }',
+			"utf8",
+		);
+
+		const harness = createExtensionHarness();
+		harness.ctx.cwd = paths.projectDirPath;
+		harness.ctx.isProjectTrusted = () => false;
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+
+		expect([...harness.shortcuts.keys()]).toEqual(["ctrl+alt+p"]);
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
+	it("does not register a plan mode shortcut when configured with an empty list", async () => {
+		const paths = await createConfigEnvironment();
+		await writeFile(
+			path.join(paths.projectDirPath, ".pi", "pi-plan-mode.jsonc"),
 			'{ "keybinding": { "toggle_plan_mode": [] } }',
 			"utf8",
 		);
 
 		const harness = createExtensionHarness();
-		harness.ctx.cwd = tempDir;
+		harness.ctx.cwd = paths.projectDirPath;
 		planExtension(harness.pi as never);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);

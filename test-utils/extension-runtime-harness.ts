@@ -16,6 +16,7 @@ export function createExtensionHarness() {
 		cwd: process.cwd(),
 		hasUI: true,
 		isIdle: () => true,
+		isProjectTrusted: () => true,
 		waitForIdle: vi.fn(async () => {}),
 		navigateTree: vi.fn(async () => ({ cancelled: false })),
 		ui: {

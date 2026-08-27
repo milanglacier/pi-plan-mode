@@ -195,7 +195,7 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		if (!planModeShortcutsConfigured) {
-			const config = loadPlanModeConfig(ctx.cwd);
+			const config = loadPlanModeConfig(ctx.cwd, { includeProjectConfig: ctx.isProjectTrusted() });
 			planModeCommand.registerTogglePlanModeShortcuts(config.keybinding.toggle_plan_mode);
 			planModeShortcutsConfigured = true;
 		}

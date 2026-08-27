@@ -18,7 +18,66 @@ interface ConfigFile {
 export interface PlanModeConfigPathOverrides {
 	agentDirPath?: string;
 	globalConfigPath?: string;
+	includeProjectConfig?: boolean;
 	projectConfigPath?: string;
+}
+
+const KEYBINDING_MODIFIERS = new Set(["alt", "ctrl", "shift", "super"]);
+const KEYBINDING_BASE_KEYS = new Set([
+	..."abcdefghijklmnopqrstuvwxyz0123456789",
+	"escape",
+	"esc",
+	"enter",
+	"return",
+	"tab",
+	"space",
+	"backspace",
+	"delete",
+	"insert",
+	"clear",
+	"home",
+	"end",
+	"pageup",
+	"pagedown",
+	"up",
+	"down",
+	"left",
+	"right",
+	...Array.from({ length: 12 }, (_, index) => `f${index + 1}`),
+	..."`-=[]\\;',./!@#$%^&*()_|~{}:<>?",
+	"+",
+]);
+
+function isValidKeybinding(value: string): boolean {
+	const normalizedValue = value.toLowerCase();
+	let baseKey: string | undefined;
+	let modifierParts: string[];
+
+	if (normalizedValue === "+") {
+		baseKey = "+";
+		modifierParts = [];
+	} else if (normalizedValue.endsWith("++")) {
+		baseKey = "+";
+		modifierParts = normalizedValue.slice(0, -2).split("+");
+	} else {
+		const parts = normalizedValue.split("+");
+		baseKey = parts.pop();
+		modifierParts = parts;
+	}
+
+	if (!baseKey || !KEYBINDING_BASE_KEYS.has(baseKey)) {
+		return false;
+	}
+
+	const modifiers = new Set<string>();
+	for (const modifier of modifierParts) {
+		if (!KEYBINDING_MODIFIERS.has(modifier) || modifiers.has(modifier)) {
+			return false;
+		}
+		modifiers.add(modifier);
+	}
+
+	return true;
 }
 
 function stripJsonComments(source: string): string {
@@ -163,11 +222,17 @@ function readTogglePlanModeKeybindings(config: ConfigFile | undefined, filePath:
 
 	const value = config.keybinding.toggle_plan_mode;
 	if (!Array.isArray(value) || !value.every((key) => typeof key === "string" && key.trim().length > 0)) {
-		console.warn(`Ignoring invalid keybinding.toggle_plan_mode in ${filePath}: expected a list of non-empty strings.`);
+		console.warn(`Ignoring invalid keybinding.toggle_plan_mode in ${filePath}: expected a list of valid keybindings.`);
 		return undefined;
 	}
 
-	return value.map((key) => key.trim());
+	const keybindings = value.map((key) => key.trim());
+	if (!keybindings.every(isValidKeybinding)) {
+		console.warn(`Ignoring invalid keybinding.toggle_plan_mode in ${filePath}: expected a list of valid keybindings.`);
+		return undefined;
+	}
+
+	return keybindings;
 }
 
 export function loadPlanModeConfig(cwd: string, options?: PlanModeConfigPathOverrides): PlanModeConfig {
@@ -177,7 +242,7 @@ export function loadPlanModeConfig(cwd: string, options?: PlanModeConfigPathOver
 		options?.projectConfigPath ?? path.join(cwd, CONFIG_DIR_NAME, PLAN_MODE_CONFIG_FILENAME);
 
 	const globalConfig = readConfigFile(globalConfigPath);
-	const projectConfig = readConfigFile(projectConfigPath);
+	const projectConfig = options?.includeProjectConfig === false ? undefined : readConfigFile(projectConfigPath);
 	const globalKeybindings = readTogglePlanModeKeybindings(globalConfig, globalConfigPath);
 	const projectKeybindings = readTogglePlanModeKeybindings(projectConfig, projectConfigPath);
 

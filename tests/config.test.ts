@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { loadPlanModeConfig } from "../config";
 
@@ -27,6 +27,7 @@ afterEach(async () => {
 		}
 		await rm(dir, { recursive: true, force: true });
 	}
+	vi.restoreAllMocks();
 });
 
 describe("loadPlanModeConfig", () => {
@@ -70,6 +71,42 @@ describe("loadPlanModeConfig", () => {
 			"shift+f2",
 			"ctrl+f2",
 		]);
+	});
+
+	test("ignores project-local configuration when the project is untrusted", async () => {
+		const paths = await createConfigPaths();
+		await writeFile(
+			path.join(paths.agentDirPath, "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": ["ctrl+alt+p"] } }',
+			"utf8",
+		);
+		await writeFile(
+			path.join(paths.projectDirPath, ".pi", "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": ["p"] } }',
+			"utf8",
+		);
+
+		expect(
+			loadPlanModeConfig(paths.projectDirPath, {
+				agentDirPath: paths.agentDirPath,
+				includeProjectConfig: false,
+			}).keybinding.toggle_plan_mode,
+		).toEqual(["ctrl+alt+p"]);
+	});
+
+	test("rejects keybindings with unknown modifiers", async () => {
+		const paths = await createConfigPaths();
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		await writeFile(
+			path.join(paths.agentDirPath, "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": ["crtl+p"] } }',
+			"utf8",
+		);
+
+		expect(loadPlanModeConfig(paths.projectDirPath, { agentDirPath: paths.agentDirPath }).keybinding.toggle_plan_mode).toEqual([
+			"alt+p",
+		]);
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("expected a list of valid keybindings"));
 	});
 
 	test("allows project-local configuration to disable the shortcut", async () => {
