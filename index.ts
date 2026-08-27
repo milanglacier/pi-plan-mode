@@ -6,6 +6,7 @@ import { Text } from "@earendil-works/pi-tui";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { loadPlanModeConfig } from "./config";
 import { registerPlanModeCommand } from "./flow";
 import { resolveActivePlanFilePath } from "./plan-files";
 import { loadPlanModePrompt } from "./prompts";
@@ -143,20 +144,24 @@ export default function (pi: ExtensionAPI) {
 		getState: stateManager.getState,
 	});
 
-	registerPlanModeCommand(pi, {
-		onPlanModeExited: ({ planFilePath, planText }) => {
-			pi.sendMessage({
-				customType: PLAN_MODE_EXIT_ENTRY_TYPE,
-				content: "Plan mode ended.",
-				display: true,
-				details: {
-					planFilePath,
-					planText,
-				},
-			});
+	const planModeCommand = registerPlanModeCommand(
+		pi,
+		{
+			onPlanModeExited: ({ planFilePath, planText }) => {
+				pi.sendMessage({
+					customType: PLAN_MODE_EXIT_ENTRY_TYPE,
+					content: "Plan mode ended.",
+					display: true,
+					details: {
+						planFilePath,
+						planText,
+					},
+				});
+			},
+			stateManager,
 		},
-		stateManager,
-	});
+		{ togglePlanModeKeybindings: [] },
+	);
 
 	pi.on("before_agent_start", async () => {
 		stateManager.syncTools();
@@ -175,6 +180,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	let startupRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+	let planModeShortcutsConfigured = false;
 	const cancelStartupRefresh = () => {
 		if (!startupRefreshTimer) {
 			return;
@@ -188,6 +194,12 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
+		if (!planModeShortcutsConfigured) {
+			const config = loadPlanModeConfig(ctx.cwd);
+			planModeCommand.registerTogglePlanModeShortcuts(config.keybinding.toggle_plan_mode);
+			planModeShortcutsConfigured = true;
+		}
+
 		cancelStartupRefresh();
 		startupRefreshTimer = setTimeout(() => {
 			startupRefreshTimer = undefined;

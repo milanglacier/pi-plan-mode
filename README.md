@@ -81,6 +81,21 @@ pi install npm:@milanglacier/pi-plan-mode
 
 `Alt+P` — toggle plan mode without typing `/plan`.
 
+The shortcut can be configured in `pi-plan-mode.jsonc`:
+
+- Global: `~/.pi/agent/pi-plan-mode.jsonc`
+- Project-local: `<project>/.pi/pi-plan-mode.jsonc` (overrides the global file)
+
+```jsonc
+{
+  "keybinding": {
+    "toggle_plan_mode": ["ctrl+alt+p", "shift+f2"]
+  }
+}
+```
+
+Use an empty list (`"toggle_plan_mode": []`) to disable the shortcut. If the option is omitted, the default remains `alt+p`.
+
 ## Tools available in plan mode
 
 Only while plan mode is active, these tools are exposed:

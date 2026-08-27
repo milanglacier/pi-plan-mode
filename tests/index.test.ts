@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,6 +26,57 @@ afterEach(async () => {
 });
 
 describe("plan extension", () => {
+	it("keeps alt+p as the default plan mode shortcut", async () => {
+		const harness = createExtensionHarness();
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+
+		expect([...harness.shortcuts.keys()]).toEqual(["alt+p"]);
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
+	it("registers project-local plan mode keybindings on session start", async () => {
+		const tempDir = await createTempDir();
+		await mkdir(path.join(tempDir, ".pi"), { recursive: true });
+		await writeFile(
+			path.join(tempDir, ".pi", "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": ["ctrl+alt+p", "shift+f2"] } }',
+			"utf8",
+		);
+
+		const harness = createExtensionHarness();
+		harness.ctx.cwd = tempDir;
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+
+		expect([...harness.shortcuts.keys()]).toEqual(["ctrl+alt+p", "shift+f2"]);
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
+	it("does not register a plan mode shortcut when configured with an empty list", async () => {
+		const tempDir = await createTempDir();
+		await mkdir(path.join(tempDir, ".pi"), { recursive: true });
+		await writeFile(
+			path.join(tempDir, ".pi", "pi-plan-mode.jsonc"),
+			'{ "keybinding": { "toggle_plan_mode": [] } }',
+			"utf8",
+		);
+
+		const harness = createExtensionHarness();
+		harness.ctx.cwd = tempDir;
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+
+		expect(harness.shortcuts.size).toBe(0);
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
 	it("writes plans only while plan mode is active", async () => {
 		const harness = createExtensionHarness();
 		planExtension(harness.pi as never);

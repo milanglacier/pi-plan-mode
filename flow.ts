@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { KeyId } from "@earendil-works/pi-tui";
 
 import { BorderedLoader } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
@@ -447,6 +448,9 @@ export function registerPlanModeCommand(
 		stateManager: PlanModeStateManager;
 		onPlanModeExited?: (summary: PlanModeExitSummary) => void;
 	},
+	options?: {
+		togglePlanModeKeybindings?: readonly string[];
+	},
 ) {
 	const handlePlanModeCommand = async (args: string, ctx: ExtensionCommandContext) => {
 		const rawLocation = args.trim();
@@ -657,11 +661,26 @@ export function registerPlanModeCommand(
 		handler: handlePlanModeCommand,
 	});
 
-	pi.registerShortcut("alt+p", {
-		description: "Toggle /plan",
-		handler: async (ctx) => {
-			const shortcutCommandContext = createShortcutCommandContext(ctx);
-			await handlePlanModeCommand("", shortcutCommandContext);
-		},
-	});
+	const registerTogglePlanModeShortcuts = (shortcuts: readonly string[]) => {
+		for (const shortcut of shortcuts) {
+			const normalizedShortcut = shortcut.trim();
+			if (!normalizedShortcut) {
+				continue;
+			}
+
+			pi.registerShortcut(normalizedShortcut as KeyId, {
+				description: "Toggle /plan",
+				handler: async (ctx) => {
+					const shortcutCommandContext = createShortcutCommandContext(ctx);
+					await handlePlanModeCommand("", shortcutCommandContext);
+				},
+			});
+		}
+	};
+
+	registerTogglePlanModeShortcuts(options?.togglePlanModeKeybindings ?? ["alt+p"]);
+
+	return {
+		registerTogglePlanModeShortcuts,
+	};
 }
