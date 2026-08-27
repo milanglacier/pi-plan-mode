@@ -13,6 +13,11 @@ const BANNER_WIDGET_KEY = "pi-plan-banner";
 const PLAN_MODE_TOOL_NAMES = ["request_user_input", "set_plan"] as const;
 const PLAN_MODE_TOOL_NAME_SET = new Set<string>(PLAN_MODE_TOOL_NAMES);
 
+interface PlanModeStateManagerOptions {
+	shouldEnableRequestUserInput?: (planModeActive: boolean) => boolean;
+	ensureRequestUserInputTool?: () => void;
+}
+
 export function getLatestState(ctx: ExtensionContext): PlanModeState {
 	const entries = ctx.sessionManager.getEntries();
 	for (let i = entries.length - 1; i >= 0; i--) {
@@ -48,7 +53,7 @@ export function getFirstUserMessageId(ctx: ExtensionContext): string | undefined
 	return undefined;
 }
 
-export function createPlanModeStateManager(pi: ExtensionAPI) {
+export function createPlanModeStateManager(pi: ExtensionAPI, options?: PlanModeStateManagerOptions) {
 	let state: PlanModeState = createInactivePlanModeState();
 
 	const persistState = () => {
@@ -69,9 +74,24 @@ export function createPlanModeStateManager(pi: ExtensionAPI) {
 
 	const syncPlanModeTools = () => {
 		const activeTools = pi.getActiveTools();
-		const nextTools = state.active
-			? [...activeTools, ...PLAN_MODE_TOOL_NAMES.filter((toolName) => !activeTools.includes(toolName))]
-			: activeTools.filter((toolName) => !PLAN_MODE_TOOL_NAME_SET.has(toolName));
+		const shouldEnableRequestUserInput =
+			options?.shouldEnableRequestUserInput?.(state.active) ?? state.active;
+
+		if (shouldEnableRequestUserInput) {
+			options?.ensureRequestUserInputTool?.();
+		}
+
+		const toolsToEnable = state.active
+			? shouldEnableRequestUserInput
+				? PLAN_MODE_TOOL_NAMES
+				: ["set_plan"]
+			: shouldEnableRequestUserInput
+				? ["request_user_input"]
+				: [];
+		const nextTools = [
+			...activeTools.filter((toolName) => !PLAN_MODE_TOOL_NAME_SET.has(toolName)),
+			...toolsToEnable,
+		];
 
 		if (areSameToolLists(activeTools, nextTools)) {
 			return;

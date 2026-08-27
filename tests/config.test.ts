@@ -35,6 +35,7 @@ describe("loadPlanModeConfig", () => {
 		const paths = await createConfigPaths();
 
 		expect(loadPlanModeConfig(paths.projectDirPath, { agentDirPath: paths.agentDirPath })).toEqual({
+			enable_request_user_input_on_startup: false,
 			keybinding: {
 				toggle_plan_mode: ["alt+p"],
 			},
@@ -137,5 +138,36 @@ describe("loadPlanModeConfig", () => {
 		expect(loadPlanModeConfig(paths.projectDirPath, { agentDirPath: paths.agentDirPath }).keybinding.toggle_plan_mode).toEqual([
 			"ctrl+alt+p",
 		]);
+	});
+
+	test("loads the startup request user input setting and lets project config override it", async () => {
+		const paths = await createConfigPaths();
+		await writeFile(
+			path.join(paths.agentDirPath, "pi-plan-mode.jsonc"),
+			'{ "enable_request_user_input_on_startup": true }',
+			"utf8",
+		);
+
+		expect(loadPlanModeConfig(paths.projectDirPath, { agentDirPath: paths.agentDirPath }).enable_request_user_input_on_startup).toBe(true);
+
+		await writeFile(
+			path.join(paths.projectDirPath, ".pi", "pi-plan-mode.jsonc"),
+			'{ "enable_request_user_input_on_startup": false }',
+			"utf8",
+		);
+		expect(loadPlanModeConfig(paths.projectDirPath, { agentDirPath: paths.agentDirPath }).enable_request_user_input_on_startup).toBe(false);
+	});
+
+	test("ignores an invalid startup request user input setting", async () => {
+		const paths = await createConfigPaths();
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		await writeFile(
+			path.join(paths.agentDirPath, "pi-plan-mode.jsonc"),
+			'{ "enable_request_user_input_on_startup": "yes" }',
+			"utf8",
+		);
+
+		expect(loadPlanModeConfig(paths.projectDirPath, { agentDirPath: paths.agentDirPath }).enable_request_user_input_on_startup).toBe(false);
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("expected a boolean"));
 	});
 });

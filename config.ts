@@ -4,14 +4,17 @@ import path from "node:path";
 
 export const PLAN_MODE_CONFIG_FILENAME = "pi-plan-mode.jsonc";
 export const DEFAULT_TOGGLE_PLAN_MODE_KEYBINDINGS = ["alt+p"] as const;
+export const DEFAULT_ENABLE_REQUEST_USER_INPUT_ON_STARTUP = false;
 
 export interface PlanModeConfig {
+	enable_request_user_input_on_startup: boolean;
 	keybinding: {
 		toggle_plan_mode: string[];
 	};
 }
 
 interface ConfigFile {
+	enable_request_user_input_on_startup?: unknown;
 	keybinding?: unknown;
 }
 
@@ -235,6 +238,22 @@ function readTogglePlanModeKeybindings(config: ConfigFile | undefined, filePath:
 	return keybindings;
 }
 
+function readEnableRequestUserInputOnStartup(config: ConfigFile | undefined, filePath: string): boolean | undefined {
+	if (!config || !("enable_request_user_input_on_startup" in config)) {
+		return undefined;
+	}
+
+	const value = config.enable_request_user_input_on_startup;
+	if (typeof value !== "boolean") {
+		console.warn(
+			`Ignoring invalid enable_request_user_input_on_startup in ${filePath}: expected a boolean.`,
+		);
+		return undefined;
+	}
+
+	return value;
+}
+
 export function loadPlanModeConfig(cwd: string, options?: PlanModeConfigPathOverrides): PlanModeConfig {
 	const globalConfigPath =
 		options?.globalConfigPath ?? path.join(options?.agentDirPath ?? getAgentDir(), PLAN_MODE_CONFIG_FILENAME);
@@ -245,8 +264,14 @@ export function loadPlanModeConfig(cwd: string, options?: PlanModeConfigPathOver
 	const projectConfig = options?.includeProjectConfig === false ? undefined : readConfigFile(projectConfigPath);
 	const globalKeybindings = readTogglePlanModeKeybindings(globalConfig, globalConfigPath);
 	const projectKeybindings = readTogglePlanModeKeybindings(projectConfig, projectConfigPath);
+	const globalEnableRequestUserInputOnStartup = readEnableRequestUserInputOnStartup(globalConfig, globalConfigPath);
+	const projectEnableRequestUserInputOnStartup = readEnableRequestUserInputOnStartup(projectConfig, projectConfigPath);
 
 	return {
+		enable_request_user_input_on_startup:
+			projectEnableRequestUserInputOnStartup ??
+			globalEnableRequestUserInputOnStartup ??
+			DEFAULT_ENABLE_REQUEST_USER_INPUT_ON_STARTUP,
 		keybinding: {
 			toggle_plan_mode: [...(projectKeybindings ?? globalKeybindings ?? DEFAULT_TOGGLE_PLAN_MODE_KEYBINDINGS)],
 		},

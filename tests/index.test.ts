@@ -69,6 +69,140 @@ describe("plan extension", () => {
 		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
 	});
 
+	it("does not register request_user_input on startup by default", async () => {
+		const paths = await createConfigEnvironment();
+		const harness = createExtensionHarness();
+		harness.ctx.cwd = paths.projectDirPath;
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+
+		expect(harness.tools.has("request_user_input")).toBe(false);
+		expect(harness.pi.getActiveTools()).not.toContain("request_user_input");
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
+	it("registers request_user_input on startup when configured", async () => {
+		const paths = await createConfigEnvironment();
+		await writeFile(
+			path.join(paths.agentDirPath, "pi-plan-mode.jsonc"),
+			'{ "enable_request_user_input_on_startup": true }',
+			"utf8",
+		);
+		const harness = createExtensionHarness();
+		harness.ctx.cwd = paths.projectDirPath;
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+
+		expect(harness.tools.has("request_user_input")).toBe(true);
+		expect(harness.pi.getActiveTools()).toContain("request_user_input");
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
+	it("toggles request_user_input without changing plan mode", async () => {
+		const harness = createExtensionHarness();
+		planExtension(harness.pi as never);
+		const command = harness.commands.get("request-user-input") as {
+			handler: (args: string, ctx: any) => Promise<void>;
+		};
+
+		await command.handler("on", harness.ctx);
+		expect(harness.tools.has("request_user_input")).toBe(true);
+		expect(harness.pi.getActiveTools()).toContain("request_user_input");
+		expect(harness.pi.getActiveTools()).not.toContain("set_plan");
+		expect(harness.entries).toEqual([]);
+
+		await command.handler("", harness.ctx);
+		expect(harness.pi.getActiveTools()).not.toContain("request_user_input");
+		expect(harness.entries).toEqual([]);
+	});
+
+	it("allows the enabled request_user_input tool to run outside plan mode", async () => {
+		const harness = createExtensionHarness();
+		harness.ctx.ui.input = vi.fn(async () => "Ship in two phases");
+		planExtension(harness.pi as never);
+		const command = harness.commands.get("request-user-input") as {
+			handler: (args: string, ctx: any) => Promise<void>;
+		};
+		await command.handler("on", harness.ctx);
+
+		const tool = harness.tools.get("request_user_input");
+		const result = await tool.execute(
+			"tool-1",
+			{
+				questions: [{ id: "notes", header: "Notes", question: "Any constraints?" }],
+			},
+			new AbortController().signal,
+			() => {},
+			harness.ctx,
+		);
+
+		expect(result.content).toEqual([{ type: "text", text: "1. Any constraints?\n   Answer: Ship in two phases" }]);
+	});
+
+	it("keeps resumed plan mode tools during the startup refresh window", async () => {
+		const paths = await createConfigEnvironment();
+		const harness = createExtensionHarness();
+		harness.ctx.cwd = paths.projectDirPath;
+		harness.ctx.sessionManager.getEntries = () => [
+			{
+				type: "custom",
+				customType: "pi-plan:state",
+				data: {
+					version: 1,
+					active: true,
+					planFilePath: "/tmp/session.plan.md",
+				},
+			},
+		];
+		planExtension(harness.pi as never);
+
+		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
+		const [result] = await harness.emitAsync("before_agent_start", undefined, harness.ctx);
+
+		expect(result).toEqual({
+			message: expect.objectContaining({
+				customType: "pi-plan:context",
+			}),
+		});
+		expect(harness.pi.getActiveTools()).toEqual(["read", "bash", "edit", "write", "request_user_input", "set_plan"]);
+
+		harness.emit("session_shutdown", { type: "session_shutdown" }, harness.ctx);
+	});
+
+	it("keeps request_user_input in plan mode when normal mode is disabled", async () => {
+		const harness = createExtensionHarness();
+		let planActive = true;
+		harness.ctx.sessionManager.getEntries = () => [
+			{
+				type: "custom",
+				customType: "pi-plan:state",
+				data: {
+					version: 1,
+					active: planActive,
+					planFilePath: "/tmp/session.plan.md",
+				},
+			},
+		];
+		planExtension(harness.pi as never);
+		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
+
+		const command = harness.commands.get("request-user-input") as {
+			handler: (args: string, ctx: any) => Promise<void>;
+		};
+		await command.handler("off", harness.ctx);
+
+		expect(harness.pi.getActiveTools()).toContain("set_plan");
+		expect(harness.pi.getActiveTools()).toContain("request_user_input");
+
+		planActive = false;
+		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
+		expect(harness.pi.getActiveTools()).not.toContain("request_user_input");
+	});
+
 	it("ignores project-local plan mode keybindings for untrusted projects", async () => {
 		const paths = await createConfigEnvironment();
 		await writeFile(

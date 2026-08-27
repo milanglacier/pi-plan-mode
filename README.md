@@ -76,6 +76,7 @@ pi install npm:@milanglacier/pi-plan-mode
 | `/plan`             | Enter plan mode (or show actions if already active) |
 | `/plan [file-path]` | Use a specific file as the plan file                |
 | `/plan [directory]` | Create a timestamped plan file in that directory    |
+| `/request-user-input [on\|off\|toggle]` | Enable or disable the `request_user_input` tool without changing plan mode |
 
 ## Shortcut
 
@@ -88,6 +89,7 @@ The shortcut can be configured in `pi-plan-mode.jsonc`:
 
 ```jsonc
 {
+  "enable_request_user_input_on_startup": false,
   "keybinding": {
     "toggle_plan_mode": ["ctrl+alt+p", "shift+f2"]
   }
@@ -96,16 +98,18 @@ The shortcut can be configured in `pi-plan-mode.jsonc`:
 
 Use an empty list (`"toggle_plan_mode": []`) to disable the shortcut. If the option is omitted, the default remains `alt+p`.
 
+`enable_request_user_input_on_startup` enables `request_user_input` in normal mode when the session starts. It defaults to `false` to preserve the plan-mode-only behavior. You can change it for the current session with `/request-user-input on`, `/request-user-input off`, or `/request-user-input` (toggle).
+
 ## Tools available in plan mode
 
-Only while plan mode is active, these tools are exposed:
+Plan mode always exposes `set_plan` and `request_user_input`, regardless of the normal-mode setting. `request_user_input` can also be enabled in normal mode with the startup setting or command.
 
 | Tool                 | Purpose                                                |
 | -------------------- | ------------------------------------------------------ |
-| `request_user_input` | Ask you clarifying questions with optional choices     |
+| `request_user_input` | Ask clarifying questions with optional choices         |
 | `set_plan`           | Overwrite the plan file with the latest full plan text |
 
-When plan mode ends, these tools disappear.
+When plan mode ends, `set_plan` disappears. `request_user_input` remains available in normal mode only when enabled independently.
 
 ## Customization
 

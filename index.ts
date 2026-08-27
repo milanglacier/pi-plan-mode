@@ -35,10 +35,51 @@ interface PlanModeExitDetails {
 }
 
 const PLAN_MODE_EXIT_ENTRY_TYPE = "pi-plan:exit";
+const REQUEST_USER_INPUT_TOOL_NAME = "request_user_input";
 const STARTUP_REFRESH_DELAY_MS = 250;
 
+type RequestUserInputMode = "default" | "on" | "off";
+
 export default function (pi: ExtensionAPI) {
-	const stateManager = createPlanModeStateManager(pi);
+	let requestUserInputMode: RequestUserInputMode = "default";
+	let requestUserInputToolRegistered = false;
+
+	const ensureRequestUserInputTool = () => {
+		if (requestUserInputToolRegistered) {
+			return;
+		}
+
+		registerRequestUserInputTool(pi);
+		requestUserInputToolRegistered = true;
+	};
+
+	const isRequestUserInputEnabled = (planModeActive: boolean) => planModeActive || requestUserInputMode === "on";
+	const isRequestUserInputEnabledInNormalMode = () => requestUserInputMode === "on";
+
+	const stateManager = createPlanModeStateManager(pi, {
+		shouldEnableRequestUserInput: isRequestUserInputEnabled,
+		ensureRequestUserInputTool,
+	});
+
+	const syncRequestUserInputTool = () => {
+		const shouldEnable = isRequestUserInputEnabled(stateManager.getState().active);
+		if (shouldEnable) {
+			ensureRequestUserInputTool();
+		}
+
+		const activeTools = pi.getActiveTools();
+		const nextTools = shouldEnable
+			? activeTools.includes(REQUEST_USER_INPUT_TOOL_NAME)
+				? activeTools
+				: [...activeTools, REQUEST_USER_INPUT_TOOL_NAME]
+			: activeTools.filter((toolName) => toolName !== REQUEST_USER_INPUT_TOOL_NAME);
+
+		const toolsChanged =
+			activeTools.length !== nextTools.length || activeTools.some((toolName, index) => toolName !== nextTools[index]);
+		if (toolsChanged) {
+			pi.setActiveTools(nextTools);
+		}
+	};
 
 	pi.registerMessageRenderer(PLAN_MODE_EXIT_ENTRY_TYPE, (message, { expanded }, theme) => {
 		const render = (text: string) => new Text(text, 1, 0, (segment) => theme.bg("customMessageBg", segment));
@@ -140,8 +181,30 @@ export default function (pi: ExtensionAPI) {
 		},
 	});
 
-	registerRequestUserInputTool(pi, {
-		getState: stateManager.getState,
+	pi.registerCommand("request-user-input", {
+		description: "Enable, disable, or toggle the request_user_input tool.",
+		handler: async (args, ctx) => {
+			const requestedMode = String(args ?? "").trim().toLowerCase();
+			if (requestedMode && !["on", "off", "toggle"].includes(requestedMode)) {
+				ctx.ui.notify("Usage: /request-user-input [on|off|toggle]", "warning");
+				return;
+			}
+
+			await ctx.waitForIdle();
+
+			const isEnabled = isRequestUserInputEnabledInNormalMode();
+			if (requestedMode === "on") {
+				requestUserInputMode = "on";
+			} else if (requestedMode === "off") {
+				requestUserInputMode = "off";
+			} else {
+				requestUserInputMode = isEnabled ? "off" : "on";
+			}
+
+			stateManager.syncTools();
+			const enabled = isRequestUserInputEnabledInNormalMode();
+			ctx.ui.notify(`request_user_input ${enabled ? "enabled" : "disabled"} in normal mode.`, "info");
+		},
 	});
 
 	const planModeCommand = registerPlanModeCommand(
@@ -163,8 +226,8 @@ export default function (pi: ExtensionAPI) {
 		{ togglePlanModeKeybindings: [] },
 	);
 
-	pi.on("before_agent_start", async () => {
-		stateManager.syncTools();
+	pi.on("before_agent_start", async (_event, ctx) => {
+		stateManager.refresh(ctx);
 		if (!stateManager.getState().active) {
 			return;
 		}
@@ -194,8 +257,11 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
+		const config = loadPlanModeConfig(ctx.cwd, { includeProjectConfig: ctx.isProjectTrusted() });
+		requestUserInputMode = config.enable_request_user_input_on_startup ? "on" : "default";
+		syncRequestUserInputTool();
+
 		if (!planModeShortcutsConfigured) {
-			const config = loadPlanModeConfig(ctx.cwd, { includeProjectConfig: ctx.isProjectTrusted() });
 			planModeCommand.registerTogglePlanModeShortcuts(config.keybinding.toggle_plan_mode);
 			planModeShortcutsConfigured = true;
 		}

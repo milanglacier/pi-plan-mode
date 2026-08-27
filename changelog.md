@@ -1,3 +1,12 @@
+# Unreleased
+
+## Added
+
+- **Toggle `request_user_input` independently of plan mode.** The new
+  `/request-user-input [on|off|toggle]` command controls the tool without
+  changing plan mode. `enable_request_user_input_on_startup` can opt into the
+  tool for normal-mode sessions and defaults to `false`.
+
 # v0.5.6
 
 ## Changed

@@ -247,18 +247,12 @@ export async function collectRequestUserInputAnswers(
 
 export function registerRequestUserInputTool(
 	pi: ExtensionAPI,
-	dependencies: {
-		getState: () => PlanModeState;
-	},
+	// Kept optional for callers using the previous registration signature. Tool visibility is managed by pi.setActiveTools.
+	_dependencies?: { getState: () => PlanModeState },
 ) {
 	pi.registerTool({
-		description:
-			"Request user input for one to three short questions and wait for the response. This tool is only available in Plan mode.",
+		description: "Request user input for one to three short questions and wait for the response.",
 		async execute(_toolCallId, params, signal, _onUpdate, ctx): Promise<AgentToolResult<RequestUserInputDetails>> {
-			if (!dependencies.getState().active) {
-				throw new Error("request_user_input is unavailable when plan mode is inactive");
-			}
-
 			if (!ctx.hasUI) {
 				throw new Error("request_user_input requires UI support");
 			}
