@@ -45,3 +45,37 @@ This test uses the real agent directory and repository working directory, so it 
 
 - `npm run check` — typechecking passed; 10 test files and 73 tests passed
 - `tests/index.test.ts` also passed with an external `PI_CODING_AGENT_DIR` containing a non-default shortcut, confirming test isolation
+
+## Second-round review
+
+## Findings
+
+### [P2] Reject modifier/base combinations Pi cannot dispatch
+
+**Location:** `/home/milanglacier/Desktop/personal-projects/pi-plan-mode/config.ts:73-80`
+
+The validator checks the base key and modifiers independently, so it accepts bindings such as `shift+f2`, `ctrl+f2`, and `ctrl+escape`; the shipped example and tests use the first two. Pi's matcher explicitly returns false for modified function keys and modified Escape (`/home/milanglacier/Desktop/personal-projects/pi-plan-mode/node_modules/@earendil-works/pi-tui/dist/keys.js:648-651` and `:876-890`), so configuring only one of these suppresses fallback while leaving plan mode with no usable shortcut. Reject unsupported modifier/base combinations (or require a Pi version that dispatches them) and cover actual input matching rather than registration alone.
+
+### [P3] Reject plus-key bindings Pi cannot parse
+
+**Location:** `/home/milanglacier/Desktop/personal-projects/pi-plan-mode/config.ts:56-61`
+
+These special cases accept `+` and forms such as `ctrl++`, but Pi's `parseKeyId` splits identifiers on `+` and rejects the resulting empty final segment (`/home/milanglacier/Desktop/personal-projects/pi-plan-mode/node_modules/@earendil-works/pi-tui/dist/keys.js:603-607`), so these bindings can never match input. Configuring only a plus-key binding therefore suppresses fallback and registers a dead shortcut; reject these forms until Pi supports an unambiguous encoding for the Plus key.
+
+## Overall assessment
+
+**Verdict:** Patch is incorrect.
+
+**Explanation:** Configuration loading and trust handling are covered, but validation still accepts multiple keybindings that Pi cannot dispatch, including one advertised in the README. The passing tests assert registration rather than end-to-end key matching.
+
+## User's decision on the review
+
+## Findings
+
+No findings.
+
+## Overall assessment
+
+**Verdict:** Patch is correct.
+
+**Explanation:** The user considers the previously noted key-combination cases niche and potentially supported by future Pi versions, so they are not treated as actionable findings. The tests sensibly cover configuration behavior, trust handling, extension wiring, and shortcut flow, and the full check suite passes.
