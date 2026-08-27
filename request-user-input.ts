@@ -5,7 +5,6 @@ import { Text } from "@earendil-works/pi-tui";
 
 import type {
 	NormalizedRequestUserInputQuestion,
-	PlanModeState,
 	RequestUserInputAnswer,
 	RequestUserInputDetails,
 	RequestUserInputQuestion,
@@ -245,11 +244,7 @@ export async function collectRequestUserInputAnswers(
 	return buildRequestUserInputResponse(questions, responses);
 }
 
-export function registerRequestUserInputTool(
-	pi: ExtensionAPI,
-	// Kept optional for callers using the previous registration signature. Tool visibility is managed by pi.setActiveTools.
-	_dependencies?: { getState: () => PlanModeState },
-) {
+export function registerRequestUserInputTool(pi: ExtensionAPI) {
 	pi.registerTool({
 		description: "Request user input for one to three short questions and wait for the response.",
 		async execute(_toolCallId, params, signal, _onUpdate, ctx): Promise<AgentToolResult<RequestUserInputDetails>> {
