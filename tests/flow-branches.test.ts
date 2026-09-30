@@ -1,7 +1,11 @@
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { PlanModeState } from "../types.js";
+import { createFlowContext as createContext, registrationAPI, type CommandHandler, type ShortcutHandler, type FlowStateManager, type PlanModeExited } from "../test-utils/flow-fixtures.js";
 
-vi.mock("@earendil-works/pi-coding-agent", () => ({
+vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => ({
+	...await importOriginal<typeof import("@earendil-works/pi-coding-agent")>(),
 	BorderedLoader: class BorderedLoader {
 		onAbort?: () => void;
 	},
@@ -28,41 +32,31 @@ vi.mock("../state", () => stateMocks);
 
 const { registerPlanModeCommand } = await import("../flow");
 
-function createStateManager(initialState: {
-	version: number;
-	active: boolean;
-	originLeafId?: string;
-	planFilePath: string;
-	lastPlanLeafId?: string;
-}) {
+function createStateManager(initialState: PlanModeState) {
 	let state = initialState;
 
 	return {
 		getState: () => state,
-		setState: vi.fn((_ctx, nextState) => {
+		setState: vi.fn((_ctx: ExtensionContext, nextState: PlanModeState) => {
 			state = nextState;
 		}),
 		startPlanMode: vi.fn(),
-	};
+	} satisfies FlowStateManager;
 }
 
 function createRegisteredBindings(
 	stateManager: ReturnType<typeof createStateManager>,
-	onPlanModeExited?: (summary: unknown) => void,
+	onPlanModeExited?: PlanModeExited,
 ) {
-	let handler: ((args: string, ctx: any) => Promise<void>) | undefined;
-	let shortcutHandler: ((ctx: any) => Promise<void>) | undefined;
+	let handler: CommandHandler | undefined;
+	let shortcutHandler: ShortcutHandler | undefined;
 
 	registerPlanModeCommand(
-		{
-			registerCommand: (_name: string, command: { handler: (args: string, ctx: any) => Promise<void> }) => {
-				handler = command.handler;
-			},
-			registerShortcut: (_shortcut: string, options: { handler: (ctx: any) => Promise<void> }) => {
-				shortcutHandler = options.handler;
-			},
-		} as any,
-		{ stateManager, onPlanModeExited: onPlanModeExited as never },
+		registrationAPI({
+			registerCommand: (_name, command) => { handler = command.handler; },
+			registerShortcut: (_shortcut, options) => { shortcutHandler = options.handler; },
+		} satisfies Pick<ExtensionAPI, "registerCommand" | "registerShortcut">),
+		{ stateManager, onPlanModeExited },
 	);
 
 	if (!(handler && shortcutHandler)) {
@@ -70,48 +64,6 @@ function createRegisteredBindings(
 	}
 
 	return { handler, shortcutHandler };
-}
-
-function createContext(overrides: Record<string, unknown> = {}) {
-	const base = {
-		cwd: "/tmp",
-		hasUI: true,
-		isIdle: () => true,
-		waitForIdle: vi.fn(async () => {}),
-		navigateTree: vi.fn(async () => ({ cancelled: false })),
-		ui: {
-			confirm: vi.fn(async () => true),
-			custom: vi.fn(async () => ({ cancelled: false })),
-			getEditorText: vi.fn(() => ""),
-			notify: vi.fn(),
-			select: vi.fn(() => undefined),
-			setEditorText: vi.fn(),
-		},
-		sessionManager: {
-			appendLabelChange: vi.fn(),
-			branch: vi.fn(),
-			getEntries: vi.fn(() => []),
-			getEntry: vi.fn(() => undefined),
-			getLeafId: vi.fn(() => "current-leaf"),
-			getSessionDir: vi.fn(() => "/tmp"),
-			getSessionFile: vi.fn(() => undefined),
-			getSessionId: vi.fn(() => "session-1"),
-			resetLeaf: vi.fn(),
-		},
-	};
-
-	return {
-		...base,
-		...overrides,
-		ui: {
-			...base.ui,
-			...((overrides.ui as Record<string, unknown> | undefined) ?? {}),
-		},
-		sessionManager: {
-			...base.sessionManager,
-			...((overrides.sessionManager as Record<string, unknown> | undefined) ?? {}),
-		},
-	};
 }
 
 beforeEach(() => {
@@ -372,9 +324,13 @@ describe("plan flow branches", () => {
 		const ctx = createContext({
 			navigateTree,
 			ui: {
-				custom: (render: (tui: unknown, theme: unknown, kb: unknown, done: (result: unknown) => void) => unknown) => {
+				custom: (render) => {
 					return new Promise((resolve) => {
-						render(undefined, undefined, undefined, resolve);
+						// The mocked loader ignores terminal services; only completion is exercised.
+						const services = [undefined, undefined, undefined] as unknown as [
+							Parameters<typeof render>[0], Parameters<typeof render>[1], Parameters<typeof render>[2],
+						];
+						render(...services, resolve);
 					});
 				},
 				getEditorText: () => "",

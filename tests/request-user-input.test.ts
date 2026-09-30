@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
+import { createContext } from "../test-utils/context.js";
 
 import {
 	buildRequestUserInputResponse,
@@ -90,12 +91,12 @@ describe("collectRequestUserInputAnswers", () => {
 	}) {
 		const inputValues = [...(options?.input ?? [])];
 		const selectValues = [...(options?.select ?? [])];
-		return {
+		return createContext({
 			ui: {
 				input: vi.fn(async () => inputValues.shift()),
 				select: vi.fn(async () => selectValues.shift()),
 			},
-		};
+		});
 	}
 
 	test("uses input for open-ended questions", async () => {
@@ -107,7 +108,7 @@ describe("collectRequestUserInputAnswers", () => {
 		}
 		const ctx = createCtx({ input: ["Ship in two phases"] });
 
-		const response = await collectRequestUserInputAnswers(ctx as never, normalized.questions);
+		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
 		expect(ctx.ui.input).toHaveBeenCalledWith("Notes\nAny constraints?", "Any constraints?");
 		expect(ctx.ui.select).not.toHaveBeenCalled();
@@ -131,7 +132,7 @@ describe("collectRequestUserInputAnswers", () => {
 		}
 		const ctx = createCtx({ select: ["2. Node"] });
 
-		const response = await collectRequestUserInputAnswers(ctx as never, normalized.questions);
+		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
 		expect(ctx.ui.select).toHaveBeenCalledWith("Runtime\nWhich runtime?", ["1. Node", "2. Node", "3. Other"]);
 		expect(ctx.ui.input).not.toHaveBeenCalled();
@@ -152,7 +153,7 @@ describe("collectRequestUserInputAnswers", () => {
 		}
 		const ctx = createCtx({ select: ["2. Other"], input: ["Bun"] });
 
-		const response = await collectRequestUserInputAnswers(ctx as never, normalized.questions);
+		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
 		expect(ctx.ui.input).toHaveBeenCalledWith("Runtime\nWhich runtime?\nOther answer", "Type your answer");
 		expect(response?.answers.runtime.answers).toEqual(["Other", "user_note: Bun"]);
@@ -172,7 +173,7 @@ describe("collectRequestUserInputAnswers", () => {
 		}
 		const ctx = createCtx({ select: [undefined] });
 
-		await expect(collectRequestUserInputAnswers(ctx as never, normalized.questions)).resolves.toBeNull();
+		await expect(collectRequestUserInputAnswers(ctx, normalized.questions)).resolves.toBeNull();
 	});
 
 	test("returns null when Other input is cancelled", async () => {
@@ -189,7 +190,7 @@ describe("collectRequestUserInputAnswers", () => {
 		}
 		const ctx = createCtx({ select: ["2. Other"], input: [undefined] });
 
-		await expect(collectRequestUserInputAnswers(ctx as never, normalized.questions)).resolves.toBeNull();
+		await expect(collectRequestUserInputAnswers(ctx, normalized.questions)).resolves.toBeNull();
 	});
 
 	test("asks multiple questions in order", async () => {
@@ -207,7 +208,7 @@ describe("collectRequestUserInputAnswers", () => {
 		}
 		const ctx = createCtx({ input: ["Fast"], select: ["1. Node"] });
 
-		const response = await collectRequestUserInputAnswers(ctx as never, normalized.questions);
+		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
 		expect(ctx.ui.input).toHaveBeenNthCalledWith(1, "Notes\nAny constraints?", "Any constraints?");
 		expect(ctx.ui.select).toHaveBeenNthCalledWith(1, "Runtime\nWhich runtime?", ["1. Node", "2. Other"]);
@@ -231,7 +232,7 @@ describe("collectRequestUserInputAnswers", () => {
 		const ctx = createCtx({ input: ["Fast", "Bun"], select: ["2. Other"] });
 		const signal = new AbortController().signal;
 
-		const response = await collectRequestUserInputAnswers(ctx as never, normalized.questions, signal);
+		const response = await collectRequestUserInputAnswers(ctx, normalized.questions, signal);
 
 		expect(ctx.ui.input).toHaveBeenNthCalledWith(1, "Notes\nAny constraints?", "Any constraints?", { signal });
 		expect(ctx.ui.select).toHaveBeenNthCalledWith(1, "Runtime\nWhich runtime?", ["1. Node", "2. Other"], {

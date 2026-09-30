@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 
 import { buildTimestampedPlanFilename, resolveActivePlanFilePath, resolvePlanLocationInput } from "../plan-files";
+import { createContext } from "../test-utils/context.js";
 
 const tempDirs: string[] = [];
 
@@ -18,14 +19,14 @@ afterEach(async () => {
 });
 
 function createCtx(cwd: string, sessionId: string) {
-	return {
+	return createContext({
 		cwd,
 		sessionManager: {
 			getSessionId: () => sessionId,
 			getSessionFile: () => undefined,
 			getSessionDir: () => cwd,
 		},
-	} as any;
+	});
 }
 
 describe("buildTimestampedPlanFilename", () => {

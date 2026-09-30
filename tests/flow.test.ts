@@ -2,8 +2,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { PlanModeState } from "../types.js";
+import { registrationAPI, wrapCommand, wrapShortcut, type FlowStateManager, type CommandHandler, type ShortcutHandler, type NavigateOptions } from "../test-utils/flow-fixtures.js";
 
-vi.mock("@earendil-works/pi-coding-agent", () => ({
+vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => ({
+	...await importOriginal<typeof import("@earendil-works/pi-coding-agent")>(),
 	BorderedLoader: class BorderedLoader {
 		onAbort?: () => void;
 	},
@@ -23,25 +27,19 @@ afterEach(async () => {
 	}
 });
 
-function createRegisteredBindings(stateManager: {
-	getState: () => any;
-	setState: (ctx: any, nextState: any) => void;
-	startPlanMode: (ctx: any, options: { originLeafId?: string; planFilePath: string }) => void;
-}) {
-	let handler: ((args: string, ctx: any) => Promise<void>) | undefined;
-	let shortcutHandler: ((ctx: any) => Promise<void>) | undefined;
+function createRegisteredBindings(stateManager: FlowStateManager) {
+	let handler: CommandHandler | undefined;
+	let shortcutHandler: ShortcutHandler | undefined;
 	const shortcutKeys: string[] = [];
 
 	registerPlanModeCommand(
-		{
-			registerCommand: (_name: string, command: { handler: (args: string, ctx: any) => Promise<void> }) => {
-				handler = command.handler;
-			},
-			registerShortcut: (shortcut: string, options: { handler: (ctx: any) => Promise<void> }) => {
+		registrationAPI({
+			registerCommand: (_name, command) => { handler = command.handler; },
+			registerShortcut: (shortcut, options) => {
 				shortcutKeys.push(shortcut);
 				shortcutHandler = options.handler;
 			},
-		} as any,
+		} satisfies Pick<ExtensionAPI, "registerCommand" | "registerShortcut">),
 		{ stateManager },
 	);
 
@@ -53,17 +51,13 @@ function createRegisteredBindings(stateManager: {
 	}
 
 	return {
-		handler,
-		shortcutHandler,
+		handler: wrapCommand(handler),
+		shortcutHandler: wrapShortcut(shortcutHandler),
 		shortcutKeys,
 	};
 }
 
-function createRegisteredHandler(stateManager: {
-	getState: () => any;
-	setState: (ctx: any, nextState: any) => void;
-	startPlanMode: (ctx: any, options: { originLeafId?: string; planFilePath: string }) => void;
-}) {
+function createRegisteredHandler(stateManager: FlowStateManager) {
 	return createRegisteredBindings(stateManager).handler;
 }
 
@@ -83,7 +77,7 @@ describe("/plan Alt+P shortcut", () => {
 		tempDirs.push(tmpDir);
 		const planFilePath = path.join(tmpDir, "session-1.plan.md");
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,
@@ -129,7 +123,7 @@ describe("/plan Alt+P shortcut", () => {
 		tempDirs.push(tmpDir);
 		const planFilePath = path.join(tmpDir, "session-1.plan.md");
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,
@@ -189,14 +183,14 @@ describe("/plan Alt+P shortcut", () => {
 		tempDirs.push(tmpDir);
 		const planFilePath = path.join(tmpDir, "session-1.plan.md");
 		await writeFile(planFilePath, "# Existing plan\n", "utf8");
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: true,
 			originLeafId: "origin-leaf",
 			planFilePath,
 			lastPlanLeafId: undefined,
 		};
-		const setStateCalls: any[] = [];
+		const setStateCalls: PlanModeState[] = [];
 		const setEditorTextCalls: string[] = [];
 		const branchCalls: string[] = [];
 		const selectCalls: Array<{ prompt: string; choices: string[] }> = [];
@@ -284,7 +278,7 @@ describe("/plan continue planning", () => {
 		await writeFile(planFilePath, "# Existing plan\n", "utf8");
 
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,
@@ -300,12 +294,12 @@ describe("/plan continue planning", () => {
 			},
 		});
 
-		const navigateCalls: Array<{ entryId: string; options: any }> = [];
+		const navigateCalls: Array<{ entryId: string; options: NavigateOptions }> = [];
 		await handler("", {
 			cwd: tmpDir,
 			hasUI: false,
 			waitForIdle: () => undefined,
-			navigateTree: (entryId: string, options: any) => {
+			navigateTree: (entryId, options) => {
 				navigateCalls.push({ entryId, options });
 				return { cancelled: false };
 			},
@@ -352,7 +346,7 @@ describe("/plan continue planning", () => {
 		await writeFile(planFilePath, "# Existing plan\n", "utf8");
 
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,
@@ -368,13 +362,13 @@ describe("/plan continue planning", () => {
 			},
 		});
 
-		const navigateCalls: Array<{ entryId: string; options: any }> = [];
-		const notifications: Array<{ message: string; level: string }> = [];
+		const navigateCalls: Array<{ entryId: string; options: NavigateOptions }> = [];
+		const notifications: Array<{ message: string; level: string | undefined }> = [];
 		await handler("", {
 			cwd: tmpDir,
 			hasUI: true,
 			waitForIdle: () => undefined,
-			navigateTree: (entryId: string, options: any) => {
+			navigateTree: (entryId, options) => {
 				navigateCalls.push({ entryId, options });
 				return { cancelled: false };
 			},
@@ -428,7 +422,7 @@ describe("/plan continue planning", () => {
 		await writeFile(planFilePath, "# Existing plan\n", "utf8");
 
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,
@@ -444,13 +438,13 @@ describe("/plan continue planning", () => {
 			},
 		});
 
-		const navigateCalls: Array<{ entryId: string; options: any }> = [];
-		const notifications: Array<{ message: string; level: string }> = [];
+		const navigateCalls: Array<{ entryId: string; options: NavigateOptions }> = [];
+		const notifications: Array<{ message: string; level: string | undefined }> = [];
 		await handler("", {
 			cwd: tmpDir,
 			hasUI: false,
 			waitForIdle: () => undefined,
-			navigateTree: (entryId: string, options: any) => {
+			navigateTree: (entryId, options) => {
 				navigateCalls.push({ entryId, options });
 				return { cancelled: false };
 			},
@@ -489,7 +483,7 @@ describe("/plan start location prompt", () => {
 		const planFilePath = path.join(tmpDir, "session-1.plan.md");
 
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,
@@ -542,7 +536,7 @@ describe("/plan start location prompt", () => {
 		await writeFile(planFilePath, "# Existing plan\n", "utf8");
 
 		const startCalls: Array<{ originLeafId?: string; planFilePath: string }> = [];
-		let state = {
+		let state: PlanModeState = {
 			version: 1,
 			active: false,
 			planFilePath,

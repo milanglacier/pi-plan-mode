@@ -41,7 +41,7 @@ describe("plan extension", () => {
 		const paths = await createConfigEnvironment();
 		const harness = createExtensionHarness();
 		harness.ctx.cwd = paths.projectDirPath;
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 
@@ -60,7 +60,7 @@ describe("plan extension", () => {
 
 		const harness = createExtensionHarness();
 		harness.ctx.cwd = paths.projectDirPath;
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 
@@ -73,7 +73,7 @@ describe("plan extension", () => {
 		const paths = await createConfigEnvironment();
 		const harness = createExtensionHarness();
 		harness.ctx.cwd = paths.projectDirPath;
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 
@@ -92,7 +92,7 @@ describe("plan extension", () => {
 		);
 		const harness = createExtensionHarness();
 		harness.ctx.cwd = paths.projectDirPath;
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 
@@ -104,10 +104,8 @@ describe("plan extension", () => {
 
 	it("toggles request_user_input without changing plan mode", async () => {
 		const harness = createExtensionHarness();
-		planExtension(harness.pi as never);
-		const command = harness.commands.get("request-user-input") as {
-			handler: (args: string, ctx: any) => Promise<void>;
-		};
+		planExtension(harness.pi);
+		const command = harness.getCommand("request-user-input");
 
 		await command.handler("on", harness.ctx);
 		expect(harness.tools.has("request_user_input")).toBe(true);
@@ -123,13 +121,11 @@ describe("plan extension", () => {
 	it("allows the enabled request_user_input tool to run outside plan mode", async () => {
 		const harness = createExtensionHarness();
 		harness.ctx.ui.input = vi.fn(async () => "Ship in two phases");
-		planExtension(harness.pi as never);
-		const command = harness.commands.get("request-user-input") as {
-			handler: (args: string, ctx: any) => Promise<void>;
-		};
+		planExtension(harness.pi);
+		const command = harness.getCommand("request-user-input");
 		await command.handler("on", harness.ctx);
 
-		const tool = harness.tools.get("request_user_input");
+		const tool = harness.getTool("request_user_input");
 		const result = await tool.execute(
 			"tool-1",
 			{
@@ -149,6 +145,7 @@ describe("plan extension", () => {
 		harness.ctx.cwd = paths.projectDirPath;
 		harness.ctx.sessionManager.getEntries = () => [
 			{
+				id: "state-1", parentId: null, timestamp: "2026-01-01T00:00:00.000Z",
 				type: "custom",
 				customType: "pi-plan:state",
 				data: {
@@ -158,7 +155,7 @@ describe("plan extension", () => {
 				},
 			},
 		];
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 		const [result] = await harness.emitAsync("before_agent_start", undefined, harness.ctx);
@@ -178,6 +175,7 @@ describe("plan extension", () => {
 		let planActive = true;
 		harness.ctx.sessionManager.getEntries = () => [
 			{
+				id: "state-1", parentId: null, timestamp: "2026-01-01T00:00:00.000Z",
 				type: "custom",
 				customType: "pi-plan:state",
 				data: {
@@ -187,12 +185,10 @@ describe("plan extension", () => {
 				},
 			},
 		];
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
 
-		const command = harness.commands.get("request-user-input") as {
-			handler: (args: string, ctx: any) => Promise<void>;
-		};
+		const command = harness.getCommand("request-user-input");
 		await command.handler("off", harness.ctx);
 
 		expect(harness.pi.getActiveTools()).toContain("set_plan");
@@ -219,7 +215,7 @@ describe("plan extension", () => {
 		const harness = createExtensionHarness();
 		harness.ctx.cwd = paths.projectDirPath;
 		harness.ctx.isProjectTrusted = () => false;
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 
@@ -238,7 +234,7 @@ describe("plan extension", () => {
 
 		const harness = createExtensionHarness();
 		harness.ctx.cwd = paths.projectDirPath;
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 
 		await harness.emitAsync("session_start", { type: "session_start" }, harness.ctx);
 
@@ -249,8 +245,8 @@ describe("plan extension", () => {
 
 	it("writes plans only while plan mode is active", async () => {
 		const harness = createExtensionHarness();
-		planExtension(harness.pi as never);
-		const setPlan = harness.tools.get("set_plan");
+		planExtension(harness.pi);
+		const setPlan = harness.getTool("set_plan");
 
 		await expect(
 			setPlan.execute("tool-1", { plan: "# New plan" }, new AbortController().signal, () => {}, harness.ctx),
@@ -264,6 +260,7 @@ describe("plan extension", () => {
 		harness.ctx.ui.setWidget = vi.fn();
 		harness.ctx.sessionManager.getEntries = () => [
 			{
+				id: "state-1", parentId: null, timestamp: "2026-01-01T00:00:00.000Z",
 				type: "custom",
 				customType: "pi-plan:state",
 				data: {
@@ -276,9 +273,9 @@ describe("plan extension", () => {
 			},
 		];
 
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
-		const setPlan = harness.tools.get("set_plan");
+		const setPlan = harness.getTool("set_plan");
 
 		await expect(
 			setPlan.execute("tool-2", { plan: "   " }, new AbortController().signal, () => {}, harness.ctx),
@@ -307,6 +304,7 @@ describe("plan extension", () => {
 		const harness = createExtensionHarness();
 		harness.ctx.sessionManager.getEntries = () => [
 			{
+				id: "state-1", parentId: null, timestamp: "2026-01-01T00:00:00.000Z",
 				type: "custom",
 				customType: "pi-plan:state",
 				data: {
@@ -319,7 +317,7 @@ describe("plan extension", () => {
 			},
 		];
 
-		planExtension(harness.pi as never);
+		planExtension(harness.pi);
 		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
 		const [entry] = await harness.emitAsync("before_agent_start");
 
