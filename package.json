@@ -43,10 +43,10 @@
 		"vitest": "^4.1.8"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-agent-core": ">=0.78.1 <=0.120.0",
-		"@earendil-works/pi-ai": ">=0.78.1 <=0.120.0",
-		"@earendil-works/pi-coding-agent": ">=0.86.0 <=0.120.0",
-		"@earendil-works/pi-tui": ">=0.78.1 <=0.120.0",
+		"@earendil-works/pi-agent-core": ">=0.78.1 <2.0.0",
+		"@earendil-works/pi-ai": ">=0.78.1 <2.0.0",
+		"@earendil-works/pi-coding-agent": ">=0.86.0 <2.0.0",
+		"@earendil-works/pi-tui": ">=0.78.1 <2.0.0",
 		"typebox": "*"
 	},
 	"pi": {
