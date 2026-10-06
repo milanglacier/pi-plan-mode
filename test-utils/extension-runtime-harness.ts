@@ -58,6 +58,7 @@ export function createExtensionHarness() {
 		getMcpServers: () => [], registerMcpServer() {}, unregisterMcpServer() {},
 		registerVirtualModel() {}, unregisterVirtualModel() {}, registerEntryRenderer() {},
 		registerFlag() {}, registerMarkdownTransformer() {}, registerProvider() {}, unregisterProvider() {},
+		registerToolRenderer() {},
 		sendUserMessage() {}, setLabel() {}, setModel: async () => true, setSessionName() {}, setThinkingLevel() {},
 		exec: async () => unsupported("exec"),
 		events: { emit() {}, on: () => () => {} },

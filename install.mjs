@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 
 const PACKAGE_NAME = "@milanglacier/pi-plan-mode";
 
+/** @param {string[]} argv */
 function parseArgs(argv) {
 	const args = argv.slice(2);
 	let local = false;
@@ -58,12 +59,20 @@ function findPi() {
 	}
 }
 
+/**
+ * @param {string} pi
+ * @param {string} command
+ * @param {string[]} args
+ */
 function run(pi, command, args) {
 	try {
 		execFileSync(pi, [command, ...args], { stdio: "pipe", timeout: 60_000 });
 		return { ok: true, status: "ok" };
 	} catch (error) {
-		const stderr = error?.stderr?.toString?.().trim?.() ?? "";
+		const stderr = error instanceof Error && "stderr" in error &&
+			(typeof error.stderr === "string" || Buffer.isBuffer(error.stderr))
+			? error.stderr.toString().trim()
+			: "";
 		if (stderr.includes("already installed") || stderr.includes("already exists")) {
 			return { ok: true, status: "already-installed" };
 		}
