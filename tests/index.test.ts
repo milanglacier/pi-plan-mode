@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { BeforeAgentStartEvent } from "@earendil-works/pi-coding-agent";
 
 import { createExtensionHarness } from "../test-utils/extension-runtime-harness.js";
 import planExtension from "../index.js";
@@ -300,7 +301,7 @@ describe("plan extension", () => {
 		);
 	});
 
-	it("injects the plan prompt before agent start when plan mode is active", async () => {
+	it.each(["user", "custom"] as const)("injects the plan prompt for %s runs when plan mode is active", async (messageType) => {
 		const harness = createExtensionHarness();
 		harness.ctx.sessionManager.getEntries = () => [
 			{
@@ -319,7 +320,22 @@ describe("plan extension", () => {
 
 		planExtension(harness.pi);
 		await harness.emitAsync("session_tree", { type: "session_tree" }, harness.ctx);
-		const [entry] = await harness.emitAsync("before_agent_start");
+		harness.ctx.isIdle = () => false;
+		const common = {
+			type: "before_agent_start" as const,
+			systemPrompt: "System prompt",
+			systemPromptOptions: {
+				cwd: harness.ctx.cwd, selectedTools: [], hiddenTools: [], toolSnippets: {}, toolGuidelines: {},
+				promptGuidelines: [], appendSystemPrompt: "", sections: {}, contextFiles: [], skills: [],
+			},
+		};
+		const event: BeforeAgentStartEvent = messageType === "user"
+			? { ...common, messageType, prompt: "Review the plan" }
+			: { ...common, messageType, message: {
+				role: "custom", customType: "workflow-complete", content: "Research finished",
+				display: true, timestamp: 0,
+			} };
+		const [entry] = await harness.emitAsync("before_agent_start", event);
 
 		expect(entry).toEqual({
 			message: expect.objectContaining({
