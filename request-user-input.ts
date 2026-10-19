@@ -192,7 +192,7 @@ export async function collectSingleRequestUserInputAnswer(
 
 	const labels = [
 		...question.options.map((option, index) => `${index + 1}. ${option.label}`),
-		`${question.options.length + 1}. Other`,
+		`${question.options.length + 1}. Other (type your own answer)`,
 	];
 	const selected = await requestSelectDialog(ctx, title, labels, signal);
 	if (selected === undefined) {

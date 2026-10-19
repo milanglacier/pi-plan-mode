@@ -134,12 +134,12 @@ describe("collectRequestUserInputAnswers", () => {
 
 		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
-		expect(ctx.ui.select).toHaveBeenCalledWith("Runtime\nWhich runtime?", ["1. Node", "2. Node", "3. Other"]);
+		expect(ctx.ui.select).toHaveBeenCalledWith("Runtime\nWhich runtime?", ["1. Node", "2. Node", "3. Other (type your own answer)"]);
 		expect(ctx.ui.input).not.toHaveBeenCalled();
 		expect(response?.answers.runtime.answers).toEqual(["Node"]);
 	});
 
-	test("asks for follow-up input for Other", async () => {
+	test("advertises freeform input on the Other option and collects the follow-up answer", async () => {
 		const normalized = normalizeRequestUserInputQuestions([
 			{
 				id: "runtime",
@@ -151,7 +151,7 @@ describe("collectRequestUserInputAnswers", () => {
 		if ("error" in normalized) {
 			throw new Error(normalized.error);
 		}
-		const ctx = createCtx({ select: ["2. Other"], input: ["Bun"] });
+		const ctx = createCtx({ select: ["2. Other (type your own answer)"], input: ["Bun"] });
 
 		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
@@ -188,7 +188,7 @@ describe("collectRequestUserInputAnswers", () => {
 		if ("error" in normalized) {
 			throw new Error(normalized.error);
 		}
-		const ctx = createCtx({ select: ["2. Other"], input: [undefined] });
+		const ctx = createCtx({ select: ["2. Other (type your own answer)"], input: [undefined] });
 
 		await expect(collectRequestUserInputAnswers(ctx, normalized.questions)).resolves.toBeNull();
 	});
@@ -211,7 +211,7 @@ describe("collectRequestUserInputAnswers", () => {
 		const response = await collectRequestUserInputAnswers(ctx, normalized.questions);
 
 		expect(ctx.ui.input).toHaveBeenNthCalledWith(1, "Notes\nAny constraints?", "Any constraints?");
-		expect(ctx.ui.select).toHaveBeenNthCalledWith(1, "Runtime\nWhich runtime?", ["1. Node", "2. Other"]);
+		expect(ctx.ui.select).toHaveBeenNthCalledWith(1, "Runtime\nWhich runtime?", ["1. Node", "2. Other (type your own answer)"]);
 		expect(response?.answers.notes.answers).toEqual(["user_note: Fast"]);
 		expect(response?.answers.runtime.answers).toEqual(["Node"]);
 	});
@@ -229,13 +229,13 @@ describe("collectRequestUserInputAnswers", () => {
 		if ("error" in normalized) {
 			throw new Error(normalized.error);
 		}
-		const ctx = createCtx({ input: ["Fast", "Bun"], select: ["2. Other"] });
+		const ctx = createCtx({ input: ["Fast", "Bun"], select: ["2. Other (type your own answer)"] });
 		const signal = new AbortController().signal;
 
 		const response = await collectRequestUserInputAnswers(ctx, normalized.questions, signal);
 
 		expect(ctx.ui.input).toHaveBeenNthCalledWith(1, "Notes\nAny constraints?", "Any constraints?", { signal });
-		expect(ctx.ui.select).toHaveBeenNthCalledWith(1, "Runtime\nWhich runtime?", ["1. Node", "2. Other"], {
+		expect(ctx.ui.select).toHaveBeenNthCalledWith(1, "Runtime\nWhich runtime?", ["1. Node", "2. Other (type your own answer)"], {
 			signal,
 		});
 		expect(ctx.ui.input).toHaveBeenNthCalledWith(2, "Runtime\nWhich runtime?\nOther answer", "Type your answer", { signal });

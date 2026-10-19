@@ -7,6 +7,12 @@
   changing plan mode. `enable_request_user_input_on_startup` can opt into the
   tool for normal-mode sessions and defaults to `false`.
 
+## Changed
+
+- **Clarify the `request_user_input` custom-answer option.** The implicit
+  option now reads `Other (type your own answer)` so users know that a text
+  input follows the selection.
+
 # v0.5.6
 
 ## Changed
